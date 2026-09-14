@@ -1,0 +1,632 @@
+import { redirect } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/server";
+import GameTracker from "./GameTracker";
+import EndGameDialog from "./EndGameDialog";
+
+type PageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export default async function GamePage({ params }: PageProps) {
+  const { id: gameId } = await params;
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: game, error: gameError } = await supabase
+    .from("games")
+    .select(`
+      id,
+      player_id,
+      opponent,
+      position,
+      game_type,
+      location,
+      game_date,
+      status,
+      players (
+        first_name,
+        last_name
+      )
+    `)
+    .eq("id", gameId)
+    .single();
+
+  if (gameError || !game) {
+    redirect("/");
+  }
+
+  if (game.status === "completed") {
+    redirect(`/games/${gameId}/results`);
+  }
+
+  const gamePlayerId = game.player_id;
+
+  const { data: events, error: eventsError } = await supabase
+    .from("game_events")
+    .select("id, event_type, note_text, period, created_at")
+    .eq("game_id", gameId)
+    .order("created_at", { ascending: true });
+
+  if (eventsError) {
+    throw new Error(eventsError.message);
+  }
+
+  async function addEvent(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const { data: currentGame } = await supabase
+      .from("games")
+      .select("status")
+      .eq("id", gameId)
+      .single();
+
+    if (!currentGame || currentGame.status !== "in_progress") {
+      redirect(`/games/${gameId}/results`);
+    }
+
+    const eventType = String(formData.get("event_type") || "");
+    const noteText = String(formData.get("note_text") || "").trim();
+
+    const periodValue = Number(formData.get("period") || 1);
+
+    const allowed = [
+      "goal",
+      "assist",
+      "shot",
+      "sog",
+      "goal_for",
+      "goal_against",
+      "takeaway",
+      "turnover",
+      "block",
+      "exit_possession",
+      "clear",
+      "failed_exit",
+      "entry_possession",
+      "dump_in",
+      "failed_entry",
+      "one_on_one_win",
+      "one_on_one_stop",
+      "one_on_one_beaten",
+      "positive_note",
+      "improvement_note",
+      "quick_note",
+    ];
+
+    if (!allowed.includes(eventType)) {
+      throw new Error("Invalid event type.");
+    }
+
+    const { error } = await supabase
+      .from("game_events")
+      .insert({
+        game_id: gameId,
+        player_id: gamePlayerId,
+        created_by: user.id,
+        event_type: eventType,
+        note_text: noteText || null,
+        period: periodValue,
+      });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    redirect(`/games/${gameId}`);
+  }
+
+  async function undoLastEvent() {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const { data: currentGame } = await supabase
+      .from("games")
+      .select("status")
+      .eq("id", gameId)
+      .single();
+
+    if (!currentGame || currentGame.status !== "in_progress") {
+      redirect(`/games/${gameId}/results`);
+    }
+
+    const { data: lastEvent, error: lookupError } = await supabase
+      .from("game_events")
+      .select("id")
+      .eq("game_id", gameId)
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lookupError) {
+      throw new Error(lookupError.message);
+    }
+
+    if (lastEvent) {
+      const { error } = await supabase
+        .from("game_events")
+        .delete()
+        .eq("id", lastEvent.id);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    redirect(`/games/${gameId}`);
+  }
+
+  async function endGame(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const teamScore = Number(formData.get("team_score"));
+    const opponentScore = Number(formData.get("opponent_score"));
+
+    if (
+      !Number.isInteger(teamScore) ||
+      !Number.isInteger(opponentScore) ||
+      teamScore < 0 ||
+      opponentScore < 0
+    ) {
+      throw new Error("Invalid final score.");
+    }
+
+    const { error } = await supabase
+      .from("games")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        team_score: teamScore,
+        opponent_score: opponentScore,
+      })
+      .eq("id", gameId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    redirect(`/games/${gameId}/results`);
+  }
+
+  const count = (type: string) =>
+    events?.filter((event) => event.event_type === type).length ?? 0;
+
+  const goals = count("goal");
+
+  const shotAttempts =
+    count("shot") +
+    count("sog") +
+    goals;
+
+  const shotsOnGoal =
+    count("sog") +
+    goals;
+
+  const goalFor =
+    count("goal_for") +
+    goals +
+    count("assist");
+
+  const goalAgainst =
+    count("goal_against");
+
+  const onIceDifferential =
+    goalFor - goalAgainst;
+
+  const suggestedTeamScore =
+    count("goal") +
+    count("assist") +
+    count("goal_for");
+
+  const suggestedOpponentScore =
+    count("goal_against");
+
+  const formatDifferential = (value: number) => {
+    if (value > 0) return `+${value}`;
+    return String(value);
+  };
+
+  const player = Array.isArray(game.players)
+    ? game.players[0]
+    : game.players;
+
+  const eventLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      goal: "Scored Goal",
+      assist: "Got Assist",
+      shot: "Missed Shot",
+      sog: "SOG",
+      goal_for: "Goal For — No Point",
+      goal_against: "Goal Against",
+      takeaway: "Takeaway",
+      turnover: "Turnover",
+      block: "Block",
+      exit_possession: "Exit + Possession",
+      clear: "Clear",
+      failed_exit: "Failed Exit",
+
+      entry_possession: "Entry + Possession",
+      dump_in: "Dump In",
+      failed_entry: "Failed Entry",
+
+      one_on_one_win: "1v1 Win",
+      one_on_one_stop: "1v1 Stop",
+      one_on_one_beaten: "1v1 Beaten",
+    };
+
+    return labels[type] ?? type;
+  };
+
+  const lastEvent =
+    events && events.length > 0
+      ? events[events.length - 1]
+      : null;
+
+  const performanceEvents =
+    events
+      ?.filter(
+        (event) =>
+          ![
+            "positive_note",
+            "improvement_note",
+            "quick_note",
+          ].includes(event.event_type),
+      )
+      .slice(-8)
+      .reverse() ?? [];
+
+  return (
+    <main className="mx-auto min-h-screen max-w-md px-4 py-5">
+      <header className="sticky top-0 z-10 -mx-4 border-b bg-white px-4 pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Live Game
+            </p>
+
+            <h1 className="text-2xl font-bold">
+              {player?.first_name}
+              {player?.last_name ? ` ${player.last_name}` : ""}
+            </h1>
+
+            <p className="mt-1 text-sm text-gray-600">
+              vs {game.opponent} ·{" "}
+              {game.position === "forward" ? "Forward" : "Defense"}
+            </p>
+          </div>
+
+          <div className="text-right text-xs text-gray-500">
+            <div>{game.game_date}</div>
+            <div className="capitalize">
+              {game.location}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+          <div className="rounded-xl bg-gray-100 px-2 py-2">
+            <div className="text-lg font-bold">{count("goal")}</div>
+            <div className="text-[11px] text-gray-500">G</div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-2">
+            <div className="text-lg font-bold">{count("assist")}</div>
+            <div className="text-[11px] text-gray-500">A</div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-2">
+            <div className="text-lg font-bold">{shotAttempts}</div>
+            <div className="text-[11px] text-gray-500">Attempts</div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-2">
+            <div className="text-lg font-bold">{shotsOnGoal}</div>
+            <div className="text-[11px] text-gray-500">SOG</div>
+          </div>
+        </div>
+      </header>
+
+      <GameTracker
+        addEvent={addEvent}
+        position={game.position as "forward" | "defense"}
+        gameId={game.id}
+      />
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">
+            Game Performance
+          </h2>
+
+          <span className="text-xs text-gray-400">
+            Live Builder
+          </span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {formatDifferential(onIceDifferential)}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              On Ice +/-
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("takeaway")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Takeaways
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("turnover")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Turnovers
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("one_on_one_win")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              1v1 Wins
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("one_on_one_stop")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              1v1 Stops
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("block")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Blocks
+            </div>
+          </div>
+        </div>
+
+        {game.position === "forward" && (
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl border px-2 py-3">
+              <div className="text-lg font-bold">
+                {count("entry_possession")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Entry +
+              </div>
+            </div>
+
+            <div className="rounded-xl border px-2 py-3">
+              <div className="text-lg font-bold">
+                {count("dump_in")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Dump Ins
+              </div>
+            </div>
+
+            <div className="rounded-xl border px-2 py-3">
+              <div className="text-lg font-bold">
+                {count("failed_entry")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Failed Entries
+              </div>
+            </div>
+          </div>
+        )}
+
+        {game.position === "defense" && (
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border px-2 py-3 text-center">
+              <div className="text-lg font-bold">
+                {count("exit_possession")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Exit +
+              </div>
+            </div>
+
+            <div className="rounded-xl border px-2 py-3 text-center">
+              <div className="text-lg font-bold">
+                {count("clear")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Clears
+              </div>
+            </div>
+
+            <div className="rounded-xl border px-2 py-3 text-center">
+              <div className="text-lg font-bold">
+                {count("failed_exit")}
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Failed Exits
+              </div>
+            </div>
+          </div>
+        )}
+
+      <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        Recent Activity
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border">
+        {performanceEvents.length === 0 ? (
+          <div className="px-4 py-5 text-sm text-gray-500">
+            No performance events entered yet.
+          </div>
+        ) : (
+          performanceEvents.map((event) => (
+            <div
+              key={event.id}
+              className="flex items-center justify-between border-b px-4 py-3 last:border-b-0"
+            >
+              <div className="font-semibold">
+                {eventLabel(event.event_type)}
+              </div>
+
+              <div className="text-sm text-gray-500">
+                {event.period
+                  ? event.period === 4
+                    ? "OT"
+                    : `P${event.period}`
+                  : "—"}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <section className="mt-3">
+        <form action={undoLastEvent}>
+          <button
+            type="submit"
+            disabled={!events?.length}
+            className="w-full rounded-2xl border px-4 py-4 font-semibold disabled:opacity-40"
+          >
+            {lastEvent
+              ? `Undo: ${eventLabel(lastEvent.event_type)}`
+              : "Undo Last Event"}
+          </button>
+        </form>
+      </section>
+
+      </section>
+
+      {events?.some((event) =>
+        [
+          "positive_note",
+          "improvement_note",
+          "quick_note",
+        ].includes(event.event_type),
+      ) && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+            Game Notes
+          </h2>
+
+          <div className="space-y-3">
+            {events
+              .filter((event) =>
+                [
+                  "positive_note",
+                  "improvement_note",
+                  "quick_note",
+                ].includes(event.event_type),
+              )
+              .map((event) => {
+                const label =
+                  event.event_type === "positive_note"
+                    ? "Positive"
+                    : event.event_type === "improvement_note"
+                      ? "Improvement"
+                      : "Quick Note";
+
+                return (
+                  <div
+                    key={event.id}
+                    className="rounded-2xl border p-4"
+                  >
+                    <div className="text-sm font-bold">
+                      {label}
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-600">
+                      {event.note_text || "No details added"}
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                      <span>
+                        {event.period
+                          ? event.period === 4
+                            ? "OT"
+                            : `P${event.period}`
+                          : "—"}
+                      </span>
+
+                      <span>·</span>
+
+                      <span>
+                        {new Date(event.created_at).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-8 border-t pt-6">
+        <EndGameDialog
+          endGame={endGame}
+          suggestedTeamScore={suggestedTeamScore}
+          suggestedOpponentScore={suggestedOpponentScore}
+        />
+      </section>
+
+      <div className="h-12" />
+    </main>
+  );
+}
