@@ -18,11 +18,22 @@ export function calculateGameImpact(
           assist: 1.5,
           shot: 0.1,
           sog: 0.2,
+
           goal_for: 0.8,
           goal_against: -0.9,
+
+          pass: 0.05,
+          breakaway: 0,
+          body_check: 0.2,
+          penalty: -0.35,
+          icing: -0.1,
+          offside: 0,
+
           takeaway: 0.5,
           turnover: -0.6,
           block: 0.3,
+
+          // Historical events
           exit_possession: 0.3,
           clear: 0.15,
           failed_exit: -0.3,
@@ -38,11 +49,22 @@ export function calculateGameImpact(
           assist: 1.5,
           shot: 0.1,
           sog: 0.2,
+
           goal_for: 0.7,
           goal_against: -0.7,
+
+          pass: 0.05,
+          breakaway: 0.3,
+          body_check: 0.15,
+          penalty: -0.35,
+          icing: -0.1,
+          offside: -0.1,
+
           takeaway: 0.35,
           turnover: -0.5,
           block: 0.2,
+
+          // Historical events
           exit_possession: 0,
           clear: 0,
           failed_exit: 0,
@@ -67,20 +89,48 @@ export function calculateGameImpact(
 
   const goalsFor =
     count("goal_for") +
-    count("goal") +
+    goals +
     count("assist");
 
+  /*
+   * SCORING / OFFENSE
+   *
+   * Goals and assists remain the strongest
+   * individual events.
+   */
   const offensiveImpact =
     goals * weights.goal +
     count("assist") * weights.assist +
     shotAttempts * weights.shot +
     shotsOnGoal * weights.sog +
-    count("one_on_one_win") * weights.one_on_one_win;
+    count("breakaway") * weights.breakaway +
+    count("one_on_one_win") *
+      weights.one_on_one_win;
 
+  /*
+   * ON-ICE IMPACT
+   *
+   * Includes team goal impact plus the
+   * observable events we're now tracking.
+   */
   const onIceImpact =
     goalsFor * weights.goal_for +
-    count("goal_against") * weights.goal_against;
+    count("goal_against") *
+      weights.goal_against +
+    count("pass") * weights.pass +
+    count("body_check") *
+      weights.body_check +
+    count("penalty") * weights.penalty +
+    count("icing") * weights.icing +
+    count("offside") * weights.offside;
 
+  /*
+   * PUCK MANAGEMENT
+   *
+   * New games primarily use takeaway /
+   * turnover. Old event types remain here
+   * so historical games still calculate.
+   */
   const puckManagementImpact =
     count("takeaway") * weights.takeaway +
     count("turnover") * weights.turnover +
@@ -95,6 +145,14 @@ export function calculateGameImpact(
     count("failed_entry") *
       weights.failed_entry;
 
+  /*
+   * DEFENSIVE IMPACT
+   *
+   * Blocked shots and the old 1v1 defensive
+   * events remain supported.
+   *
+   * "Burned" uses one_on_one_beaten.
+   */
   const defensiveImpact =
     count("block") * weights.block +
     count("one_on_one_stop") *

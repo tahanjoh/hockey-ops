@@ -9,28 +9,21 @@ type Props = {
   gameId: string;
 };
 
-  const periods = [
-    { label: "1st", value: 1 },
-    { label: "2nd", value: 2 },
-    { label: "3rd", value: 3 },
-    { label: "OT", value: 4 },
-  ];
+type Impact = "positive" | "negative" | "neutral";
 
-  const objectiveEvents = [
-    ["Scored Goal", "goal", "positive"],
-    ["Got Assist", "assist", "positive"],
-    ["SOG", "sog", "positive"],
-    ["Missed Shot", "shot", "positive"],
-    ["1v1 Win", "one_on_one_win", "positive"],
-    ["Takeaway", "takeaway", "positive"],
-  ] as const;
+const periods = [
+  { label: "1st", value: 1 },
+  { label: "2nd", value: 2 },
+  { label: "3rd", value: 3 },
+  { label: "OT", value: 4 },
+];
 
-  export default function GameTracker({
-    addEvent,
-    position,
-    gameId,
-  }: Props) {
-    const [period, setPeriod] = useState(1);
+export default function GameTracker({
+  addEvent,
+  position,
+  gameId,
+}: Props) {
+  const [period, setPeriod] = useState(1);
 
   useEffect(() => {
     const savedPeriod = sessionStorage.getItem(
@@ -58,7 +51,7 @@ type Props = {
   function eventButton(
     label: string,
     eventType: string,
-    impact: "positive" | "negative" | "neutral" = "neutral",
+    impact: Impact = "neutral",
   ) {
     const impactClass =
       impact === "positive"
@@ -93,6 +86,7 @@ type Props = {
 
   return (
     <>
+      {/* Period */}
       <section className="mt-4">
         <div className="grid grid-cols-4 gap-2">
           {periods.map((item) => (
@@ -112,89 +106,161 @@ type Props = {
         </div>
       </section>
 
+      {/* Scoring */}
       <section className="mt-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-          Offense
+          Scoring
         </h2>
 
         <div className="grid grid-cols-2 gap-2">
-          {objectiveEvents.map(([label, type, impact]) => (
-            <div key={type}>
-              {eventButton(label, type, impact)}
-            </div>
-          ))}
+          {eventButton(
+            "Scored Goal",
+            "goal",
+            "positive",
+          )}
+
+          {eventButton(
+            "Got Assist",
+            "assist",
+            "positive",
+          )}
+
+          {eventButton(
+            "SOG",
+            "sog",
+            "positive",
+          )}
+
+          {eventButton(
+            "Missed Shot",
+            "shot",
+            "neutral",
+          )}
+
+          {eventButton(
+            "Line Goal",
+            "goal_for",
+            "positive",
+          )}
+
+          {eventButton(
+            "Goal Against",
+            "goal_against",
+            "negative",
+          )}
         </div>
       </section>
 
+      {/* On-Ice Impact */}
       <section className="mt-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           On-Ice Impact
         </h2>
 
-        <div className="grid grid-cols-2 gap-2">
-          {eventButton("Line Goal", "goal_for", "positive")}
-          {eventButton("Goal Against", "goal_against", "negative")}
-        </div>
+        {position === "forward" ? (
+          <div className="grid grid-cols-2 gap-2">
+            {eventButton(
+              "Pass",
+              "pass",
+              "positive",
+            )}
+
+            {eventButton(
+              "Icing",
+              "icing",
+              "negative",
+            )}
+
+            {eventButton(
+              "Break Away",
+              "breakaway",
+              "positive",
+            )}
+
+            {eventButton(
+              "Turnover",
+              "turnover",
+              "negative",
+            )}
+
+            {eventButton(
+              "Body Check",
+              "body_check",
+              "positive",
+            )}
+
+            {eventButton(
+              "Penalty",
+              "penalty",
+              "negative",
+            )}
+
+            {eventButton(
+              "Blocked Shot",
+              "block",
+              "positive",
+            )}
+
+            {eventButton(
+              "Off Sides",
+              "offside",
+              "negative",
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {eventButton(
+              "Pass",
+              "pass",
+              "positive",
+            )}
+
+            {eventButton(
+              "Icing",
+              "icing",
+              "negative",
+            )}
+
+            {eventButton(
+              "Takeaway",
+              "takeaway",
+              "positive",
+            )}
+
+            {eventButton(
+              "Turnover",
+              "turnover",
+              "negative",
+            )}
+
+            {eventButton(
+              "Blocked Shot",
+              "block",
+              "positive",
+            )}
+
+            {eventButton(
+              "Body Check",
+              "body_check",
+              "positive",
+            )}
+
+            {eventButton(
+              "Burned",
+              "one_on_one_beaten",
+              "negative",
+            )}
+
+            {eventButton(
+              "Penalty",
+              "penalty",
+              "negative",
+            )}
+          </div>
+        )}
       </section>
 
-      <section className="mt-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-          {position === "forward"
-            ? "Puck Management / Zone Entries"
-            : "Defense / Puck Management"}
-        </h2>
-
-        <div className="grid grid-cols-2 gap-2">
-          {eventButton("Turnover", "turnover", "negative")}
-          {eventButton("Block", "block", "positive")}
-          {eventButton("1v1 Loss", "one_on_one_beaten", "negative")}
-
-          {position === "forward" && (
-            <>
-              {eventButton(
-                "Entry + Possession",
-                "entry_possession",
-                "positive",
-              )}
-
-              {eventButton(
-                "Dump In",
-                "dump_in",
-                "positive",
-              )}
-
-              {eventButton(
-                "Failed Entry",
-                "failed_entry",
-                "negative",
-              )}
-            </>
-          )}
-
-          {position === "defense" && (
-            <>
-              {eventButton(
-                "Exit + Possession",
-                "exit_possession",
-                "positive",
-              )}
-
-              {eventButton(
-                "Clear",
-                "clear",
-                "positive",
-              )}
-
-              {eventButton(
-                "Failed Exit",
-                "failed_exit",
-                "negative",
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
+      {/* Observations */}
       <section className="mt-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           Observations
@@ -205,7 +271,6 @@ type Props = {
           period={period}
         />
       </section>
-
     </>
   );
 }

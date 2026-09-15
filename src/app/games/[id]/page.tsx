@@ -112,6 +112,12 @@ export default async function GamePage({ params }: PageProps) {
       "positive_note",
       "improvement_note",
       "quick_note",
+      "pass",
+      "icing",
+      "breakaway",
+      "body_check",
+      "penalty",
+      "offside",
     ];
 
     if (!allowed.includes(eventType)) {
@@ -276,11 +282,26 @@ export default async function GamePage({ params }: PageProps) {
       assist: "Got Assist",
       shot: "Missed Shot",
       sog: "SOG",
-      goal_for: "Goal For — No Point",
+
+      goal_for: "Line Goal",
       goal_against: "Goal Against",
+
       takeaway: "Takeaway",
       turnover: "Turnover",
-      block: "Block",
+      block: "Blocked Shot",
+
+      pass: "Pass",
+      breakaway: "Break Away",
+      body_check: "Body Check",
+
+      penalty: "Penalty",
+      icing: "Icing",
+      offside: "Off Sides",
+
+      one_on_one_win: "1v1 Win",
+      one_on_one_stop: "1v1 Stop",
+      one_on_one_beaten: "Burned",
+
       exit_possession: "Exit + Possession",
       clear: "Clear",
       failed_exit: "Failed Exit",
@@ -289,9 +310,9 @@ export default async function GamePage({ params }: PageProps) {
       dump_in: "Dump In",
       failed_entry: "Failed Entry",
 
-      one_on_one_win: "1v1 Win",
-      one_on_one_stop: "1v1 Stop",
-      one_on_one_beaten: "1v1 Beaten",
+      positive_note: "Positive Note",
+      improvement_note: "Improvement Note",
+      quick_note: "Quick Note",
     };
 
     return labels[type] ?? type;
@@ -395,10 +416,28 @@ export default async function GamePage({ params }: PageProps) {
 
           <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
             <div className="text-lg font-bold">
-              {count("takeaway")}
+              {count("pass")}
             </div>
             <div className="text-[11px] text-gray-500">
-              Takeaways
+              Passes
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("body_check")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Body Checks
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+            <div className="text-lg font-bold">
+              {count("block")}
+            </div>
+            <div className="text-[11px] text-gray-500">
+              Blocked Shots
             </div>
           </div>
 
@@ -413,58 +452,40 @@ export default async function GamePage({ params }: PageProps) {
 
           <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
             <div className="text-lg font-bold">
-              {count("one_on_one_win")}
+              {count("penalty")}
             </div>
             <div className="text-[11px] text-gray-500">
-              1v1 Wins
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
-            <div className="text-lg font-bold">
-              {count("one_on_one_stop")}
-            </div>
-            <div className="text-[11px] text-gray-500">
-              1v1 Stops
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
-            <div className="text-lg font-bold">
-              {count("block")}
-            </div>
-            <div className="text-[11px] text-gray-500">
-              Blocks
+              Penalties
             </div>
           </div>
         </div>
 
         {game.position === "forward" && (
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl border px-2 py-3">
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("entry_possession")}
+                {count("breakaway")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Entry +
+                Break Aways
               </div>
             </div>
 
-            <div className="rounded-xl border px-2 py-3">
+            <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("dump_in")}
+                {count("offside")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Dump Ins
+                Off Sides
               </div>
             </div>
 
-            <div className="rounded-xl border px-2 py-3">
+            <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("failed_entry")}
+                {count("icing")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Failed Entries
+                Icings
               </div>
             </div>
           </div>
@@ -474,28 +495,28 @@ export default async function GamePage({ params }: PageProps) {
           <div className="mt-2 grid grid-cols-3 gap-2">
             <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("exit_possession")}
+                {count("takeaway")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Exit +
+                Takeaways
               </div>
             </div>
 
             <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("clear")}
+                {count("one_on_one_beaten")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Clears
+                Burned
               </div>
             </div>
 
             <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("failed_exit")}
+                {count("icing")}
               </div>
               <div className="text-[11px] text-gray-500">
-                Failed Exits
+                Icings
               </div>
             </div>
           </div>

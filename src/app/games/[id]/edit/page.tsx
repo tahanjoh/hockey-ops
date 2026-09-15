@@ -174,6 +174,12 @@ export default async function EditGamePage({
       "one_on_one_win",
       "one_on_one_stop",
       "one_on_one_beaten",
+      "pass",
+      "icing",
+      "breakaway",
+      "body_check",
+      "penalty",
+      "offside",
     ];
 
     if (!allowedEventTypes.includes(eventType)) {
@@ -221,6 +227,12 @@ export default async function EditGamePage({
       "one_on_one_win",
       "one_on_one_stop",
       "one_on_one_beaten",
+      "pass",
+      "icing",
+      "breakaway",
+      "body_check",
+      "penalty",
+      "offside",
     ];
 
     if (!allowedEventTypes.includes(eventType)) {
@@ -477,14 +489,14 @@ export default async function EditGamePage({
             ["Assists", "assist"],
             ["SOG", "sog"],
             ["Missed Shots", "shot"],
-            ["Goal For — No Point", "goal_for"],
+            ["Line Goals", "goal_for"],
             ["Goal Against", "goal_against"],
-            ["Takeaways", "takeaway"],
+            ["Passes", "pass"],
             ["Turnovers", "turnover"],
-            ["Blocks", "block"],
-            ["1v1 Wins", "one_on_one_win"],
-            ["1v1 Stops", "one_on_one_stop"],
-            ["1v1 Beaten", "one_on_one_beaten"],
+            ["Body Checks", "body_check"],
+            ["Blocked Shots", "block"],
+            ["Penalties", "penalty"],
+            ["Icings", "icing"],
           ].map(([label, type]) => (
             <div
               key={type}
@@ -537,9 +549,8 @@ export default async function EditGamePage({
           {game.position === "forward" && (
             <>
               {[
-                ["Entry + Possession", "entry_possession"],
-                ["Dump Ins", "dump_in"],
-                ["Failed Entries", "failed_entry"],
+                ["Break Aways", "breakaway"],
+                ["Off Sides", "offside"],
               ].map(([label, type]) => (
                 <div
                   key={type}
@@ -562,6 +573,7 @@ export default async function EditGamePage({
                         name="event_type"
                         value={type}
                       />
+
                       <button
                         type="submit"
                         className="h-11 w-11 rounded-xl border text-xl font-bold"
@@ -576,6 +588,7 @@ export default async function EditGamePage({
                         name="event_type"
                         value={type}
                       />
+
                       <button
                         type="submit"
                         className="h-11 w-11 rounded-xl bg-black text-xl font-bold text-white"
@@ -592,9 +605,8 @@ export default async function EditGamePage({
           {game.position === "defense" && (
             <>
               {[
-                ["Exit + Possession", "exit_possession"],
-                ["Clears", "clear"],
-                ["Failed Exits", "failed_exit"],
+                ["Takeaways", "takeaway"],
+                ["Burned", "one_on_one_beaten"],
               ].map(([label, type]) => (
                 <div
                   key={type}
@@ -617,6 +629,7 @@ export default async function EditGamePage({
                         name="event_type"
                         value={type}
                       />
+
                       <button
                         type="submit"
                         className="h-11 w-11 rounded-xl border text-xl font-bold"
@@ -631,6 +644,7 @@ export default async function EditGamePage({
                         name="event_type"
                         value={type}
                       />
+
                       <button
                         type="submit"
                         className="h-11 w-11 rounded-xl bg-black text-xl font-bold text-white"
