@@ -17,12 +17,12 @@ type Props = {
   ];
 
   const objectiveEvents = [
-    ["Scored Goal", "goal"],
-    ["Got Assist", "assist"],
-    ["SOG", "sog"],
-    ["Missed Shot", "shot"],
-    ["1v1 Win", "one_on_one_win"],
-    ["Takeaway", "takeaway"],
+    ["Scored Goal", "goal", "positive"],
+    ["Got Assist", "assist", "positive"],
+    ["SOG", "sog", "positive"],
+    ["Missed Shot", "shot", "positive"],
+    ["1v1 Win", "one_on_one_win", "positive"],
+    ["Takeaway", "takeaway", "positive"],
   ] as const;
 
   export default function GameTracker({
@@ -58,7 +58,15 @@ type Props = {
   function eventButton(
     label: string,
     eventType: string,
+    impact: "positive" | "negative" | "neutral" = "neutral",
   ) {
+    const impactClass =
+      impact === "positive"
+        ? "border-green-600 bg-green-50 text-green-800"
+        : impact === "negative"
+          ? "border-red-500 bg-red-50 text-red-700"
+          : "border-gray-300 bg-white text-gray-900";
+
     return (
       <form action={addEvent}>
         <input
@@ -75,7 +83,7 @@ type Props = {
 
         <button
           type="submit"
-          className="min-h-16 w-full rounded-2xl border px-3 py-4 text-base font-bold"
+          className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold ${impactClass}`}
         >
           {label}
         </button>
@@ -85,14 +93,14 @@ type Props = {
 
   return (
     <>
-      <section className="mt-5">
+      <section className="mt-4">
         <div className="grid grid-cols-4 gap-2">
           {periods.map((item) => (
             <button
               key={item.value}
               type="button"
               onClick={() => selectPeriod(item.value)}
-              className={`rounded-xl border px-2 py-3 text-sm font-bold ${
+              className={`rounded-xl border px-2 py-2.5 text-sm font-bold ${
                 period === item.value
                   ? "bg-black text-white"
                   : ""
@@ -104,57 +112,61 @@ type Props = {
         </div>
       </section>
 
-      <section className="mt-6">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+      <section className="mt-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           Offense
         </h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          {objectiveEvents.map(([label, type]) => (
+        <div className="grid grid-cols-2 gap-2">
+          {objectiveEvents.map(([label, type, impact]) => (
             <div key={type}>
-              {eventButton(label, type)}
+              {eventButton(label, type, impact)}
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mt-7">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+      <section className="mt-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           On-Ice Impact
         </h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          {eventButton("Goal For — No Point", "goal_for")}
-          {eventButton("Goal Against", "goal_against")}
+        <div className="grid grid-cols-2 gap-2">
+          {eventButton("Line Goal", "goal_for", "positive")}
+          {eventButton("Goal Against", "goal_against", "negative")}
         </div>
       </section>
 
-      <section className="mt-7">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+      <section className="mt-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           {position === "forward"
             ? "Puck Management / Zone Entries"
             : "Defense / Puck Management"}
         </h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          {eventButton("Turnover", "turnover")}
-          {eventButton("Block", "block")}
-          {eventButton("1v1 Stop", "one_on_one_stop")}
-          {eventButton("1v1 Beaten", "one_on_one_beaten")}
+        <div className="grid grid-cols-2 gap-2">
+          {eventButton("Turnover", "turnover", "negative")}
+          {eventButton("Block", "block", "positive")}
+          {eventButton("1v1 Loss", "one_on_one_beaten", "negative")}
 
           {position === "forward" && (
             <>
               {eventButton(
                 "Entry + Possession",
                 "entry_possession",
+                "positive",
               )}
+
               {eventButton(
                 "Dump In",
                 "dump_in",
+                "positive",
               )}
+
               {eventButton(
                 "Failed Entry",
                 "failed_entry",
+                "negative",
               )}
             </>
           )}
@@ -164,19 +176,27 @@ type Props = {
               {eventButton(
                 "Exit + Possession",
                 "exit_possession",
+                "positive",
               )}
-              {eventButton("Clear", "clear")}
+
+              {eventButton(
+                "Clear",
+                "clear",
+                "positive",
+              )}
+
               {eventButton(
                 "Failed Exit",
                 "failed_exit",
+                "negative",
               )}
             </>
           )}
         </div>
       </section>
 
-      <section className="mt-7">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+      <section className="mt-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
           Observations
         </h2>
 
