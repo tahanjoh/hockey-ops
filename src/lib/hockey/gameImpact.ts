@@ -79,7 +79,7 @@ export function calculateGameImpact(
   const goals = count("goal");
 
   const shotAttempts =
-    count("shot") +
+    count("missed_shot") +
     count("sog") +
     goals;
 
@@ -154,10 +154,10 @@ export function calculateGameImpact(
    * "Burned" uses one_on_one_beaten.
    */
   const defensiveImpact =
-    count("block") * weights.block +
+    count("blocked_shot") * weights.block +
     count("one_on_one_stop") *
       weights.one_on_one_stop +
-    count("one_on_one_beaten") *
+    count("burned") *
       weights.one_on_one_beaten;
 
   const rawImpact =

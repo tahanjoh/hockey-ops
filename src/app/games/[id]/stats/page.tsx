@@ -16,7 +16,7 @@ const statGroups = [
       ["Scored Goals", "goal"],
       ["Got Assists", "assist"],
       ["SOG", "sog"],
-      ["Missed Shots", "shot"],
+      ["Missed Shots", "missed_shot"],
       ["1v1 Wins", "one_on_one_win"],
       ["Takeaways", "takeaway"],
     ],
@@ -32,9 +32,9 @@ const statGroups = [
     title: "Puck / Defensive",
     stats: [
       ["Turnovers", "turnover"],
-      ["Blocks", "block"],
+      ["Blocks", "blocked_shot"],
       ["1v1 Stops", "one_on_one_stop"],
-      ["1v1 Beaten", "one_on_one_beaten"],
+      ["1v1 Beaten", "burned"],
       ["Entry + Possession", "entry_possession"],
       ["Dump Ins", "dump_in"],
       ["Failed Entries", "failed_entry"],
@@ -134,7 +134,6 @@ export default async function CorrectStatsPage({
       .from("game_events")
       .insert({
         game_id: gameId,
-        player_id: currentGame.player_id,
         created_by: user.id,
         event_type: eventType,
         period: null,

@@ -31,7 +31,7 @@ export default async function GamePage({ params }: PageProps) {
       opponent,
       position,
       game_type,
-      location,
+      home_away,
       game_date,
       status,
       players (
@@ -93,13 +93,13 @@ export default async function GamePage({ params }: PageProps) {
     const allowed = [
       "goal",
       "assist",
-      "shot",
+      "missed_shot",
       "sog",
       "goal_for",
       "goal_against",
       "takeaway",
       "turnover",
-      "block",
+      "blocked_shot",
       "exit_possession",
       "clear",
       "failed_exit",
@@ -108,7 +108,7 @@ export default async function GamePage({ params }: PageProps) {
       "failed_entry",
       "one_on_one_win",
       "one_on_one_stop",
-      "one_on_one_beaten",
+      "burned",
       "positive_note",
       "improvement_note",
       "quick_note",
@@ -128,7 +128,6 @@ export default async function GamePage({ params }: PageProps) {
       .from("game_events")
       .insert({
         game_id: gameId,
-        player_id: gamePlayerId,
         created_by: user.id,
         event_type: eventType,
         note_text: noteText || null,
@@ -240,7 +239,7 @@ export default async function GamePage({ params }: PageProps) {
   const goals = count("goal");
 
   const shotAttempts =
-    count("shot") +
+    count("missed_shot") +
     count("sog") +
     goals;
 
@@ -359,7 +358,7 @@ export default async function GamePage({ params }: PageProps) {
           <div className="text-right text-xs text-gray-500">
             <div>{game.game_date}</div>
             <div className="capitalize">
-              {game.location}
+              {game.home_away}
             </div>
           </div>
         </div>
@@ -434,7 +433,7 @@ export default async function GamePage({ params }: PageProps) {
 
           <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
             <div className="text-lg font-bold">
-              {count("block")}
+              {count("blocked_shot")}
             </div>
             <div className="text-[11px] text-gray-500">
               Blocked Shots
@@ -504,7 +503,7 @@ export default async function GamePage({ params }: PageProps) {
 
             <div className="rounded-xl border px-2 py-3 text-center">
               <div className="text-lg font-bold">
-                {count("one_on_one_beaten")}
+                {count("burned")}
               </div>
               <div className="text-[11px] text-gray-500">
                 Burned

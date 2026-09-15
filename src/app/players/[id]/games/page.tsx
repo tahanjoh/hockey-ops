@@ -42,7 +42,7 @@ export default async function PlayerGamesPage({
         opponent,
         position,
         game_date,
-        location,
+        home_away,
         team_score,
         opponent_score,
         game_events (
@@ -187,7 +187,7 @@ export default async function PlayerGamesPage({
                     {game.position === "forward"
                       ? "Forward"
                       : "Defense"}{" "}
-                    · {game.location === "home" ? "Home" : "Away"}
+                    · {game.home_away === "home" ? "Home" : "Away"}
                   </div>
                 </div>
 

@@ -133,7 +133,7 @@ export default function GameTracker({
 
           {eventButton(
             "Missed Shot",
-            "shot",
+            "missed_shot",
             "neutral",
           )}
 
@@ -197,7 +197,7 @@ export default function GameTracker({
 
             {eventButton(
               "Blocked Shot",
-              "block",
+              "blocked_shot",
               "positive",
             )}
 
@@ -235,7 +235,7 @@ export default function GameTracker({
 
             {eventButton(
               "Blocked Shot",
-              "block",
+              "blocked_shot",
               "positive",
             )}
 
@@ -247,7 +247,7 @@ export default function GameTracker({
 
             {eventButton(
               "Burned",
-              "one_on_one_beaten",
+              "burned",
               "negative",
             )}
 

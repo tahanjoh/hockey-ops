@@ -52,14 +52,14 @@ export default async function NewGamePage({
 
     const position = String(formData.get("position") || "");
     const opponent = String(formData.get("opponent") || "").trim();
-    const location = String(formData.get("location") || "");
+    const homeAway = String(formData.get("home_away") || "");
     const gameType = String(formData.get("game_type") || "");
     const gameDate = String(formData.get("game_date") || "");
 
     if (
       !["forward", "defense"].includes(position) ||
       !opponent ||
-      !["home", "away"].includes(location) ||
+      !["home", "away"].includes(homeAway) ||
       !["regular", "tournament"].includes(gameType) ||
       !gameDate
     ) {
@@ -73,7 +73,7 @@ export default async function NewGamePage({
         created_by: user.id,
         position,
         opponent,
-        location,
+        home_away: homeAway,
         game_type: gameType,
         game_date: gameDate,
       })
@@ -173,7 +173,7 @@ export default async function NewGamePage({
             <label className="cursor-pointer">
               <input
                 type="radio"
-                name="location"
+                name="home_away"
                 value="home"
                 className="peer sr-only"
                 required
@@ -187,7 +187,7 @@ export default async function NewGamePage({
             <label className="cursor-pointer">
               <input
                 type="radio"
-                name="location"
+                name="home_away"
                 value="away"
                 className="peer sr-only"
                 required

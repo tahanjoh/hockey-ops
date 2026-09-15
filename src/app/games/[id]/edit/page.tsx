@@ -30,7 +30,7 @@ export default async function EditGamePage({
       player_id,
       opponent,
       position,
-      location,
+      home_away,
       game_type,
       game_date,
       team_score,
@@ -84,8 +84,8 @@ export default async function EditGamePage({
       formData.get("position") || "",
     );
 
-    const location = String(
-      formData.get("location") || "",
+    const homeAway = String(
+      formData.get("home_away") || "",
     );
 
     const gameType = String(
@@ -107,7 +107,7 @@ export default async function EditGamePage({
     if (
       !opponent ||
       !["forward", "defense"].includes(position) ||
-      !["home", "away"].includes(location) ||
+      !["home", "away"].includes(homeAway) ||
       !["regular", "tournament"].includes(gameType) ||
       !gameDate ||
       !Number.isInteger(teamScore) ||
@@ -125,7 +125,7 @@ export default async function EditGamePage({
       .update({
         opponent,
         position,
-        location,
+        home_away: homeAway,
         game_type: gameType,
         game_date: gameDate,
         team_score: teamScore,
@@ -159,12 +159,12 @@ export default async function EditGamePage({
       "goal",
       "assist",
       "sog",
-      "shot",
+      "missed_shot",
       "goal_for",
       "goal_against",
       "takeaway",
       "turnover",
-      "block",
+      "blocked_shot",
       "entry_possession",
       "dump_in",
       "failed_entry",
@@ -173,7 +173,7 @@ export default async function EditGamePage({
       "failed_exit",
       "one_on_one_win",
       "one_on_one_stop",
-      "one_on_one_beaten",
+      "burned",
       "pass",
       "icing",
       "breakaway",
@@ -188,7 +188,6 @@ export default async function EditGamePage({
 
     const { error } = await supabase.from("game_events").insert({
       game_id: safeGameId,
-      player_id: playerId,
       created_by: user.id,
       event_type: eventType,
       period: null,
@@ -212,12 +211,12 @@ export default async function EditGamePage({
       "goal",
       "assist",
       "sog",
-      "shot",
+      "missed_shot",
       "goal_for",
       "goal_against",
       "takeaway",
       "turnover",
-      "block",
+      "blocked_shot",
       "entry_possession",
       "dump_in",
       "failed_entry",
@@ -226,7 +225,7 @@ export default async function EditGamePage({
       "failed_exit",
       "one_on_one_win",
       "one_on_one_stop",
-      "one_on_one_beaten",
+      "burned",
       "pass",
       "icing",
       "breakaway",
@@ -363,10 +362,10 @@ export default async function EditGamePage({
             <label className="cursor-pointer">
               <input
                 type="radio"
-                name="location"
+                name="home_away"
                 value="home"
                 defaultChecked={
-                  game.location === "home"
+                  game.home_away === "home"
                 }
                 className="peer sr-only"
               />
@@ -379,10 +378,10 @@ export default async function EditGamePage({
             <label className="cursor-pointer">
               <input
                 type="radio"
-                name="location"
+                name="home_away"
                 value="away"
                 defaultChecked={
-                  game.location === "away"
+                  game.home_away === "away"
                 }
                 className="peer sr-only"
               />
@@ -488,13 +487,13 @@ export default async function EditGamePage({
             ["Scored Goals", "goal"],
             ["Assists", "assist"],
             ["SOG", "sog"],
-            ["Missed Shots", "shot"],
+            ["Missed Shots", "missed_shot"],
             ["Line Goals", "goal_for"],
             ["Goal Against", "goal_against"],
             ["Passes", "pass"],
             ["Turnovers", "turnover"],
             ["Body Checks", "body_check"],
-            ["Blocked Shots", "block"],
+            ["Blocked Shots", "blocked_shot"],
             ["Penalties", "penalty"],
             ["Icings", "icing"],
           ].map(([label, type]) => (
@@ -606,7 +605,7 @@ export default async function EditGamePage({
             <>
               {[
                 ["Takeaways", "takeaway"],
-                ["Burned", "one_on_one_beaten"],
+                ["Burned", "burned"],
               ].map(([label, type]) => (
                 <div
                   key={type}

@@ -31,7 +31,7 @@ export default async function GameResultsPage({
       id,
       opponent,
       position,
-      location,
+      home_away,
       game_date,
       status,
       team_score,
@@ -67,7 +67,7 @@ export default async function GameResultsPage({
   const assists = count("assist");
 
   const shotAttempts =
-    count("shot") +
+    count("missed_shot") +
     count("sog") +
     goals;
 
@@ -140,13 +140,13 @@ export default async function GameResultsPage({
   const passes = count("pass");
   const turnovers = count("turnover");
   const bodyChecks = count("body_check");
-  const blockedShots = count("block");
+  const blockedShots = count("blocked_shot");
   const penalties = count("penalty");
   const icings = count("icing");
   const breakaways = count("breakaway");
   const offsides = count("offside");
   const takeawaysCount = count("takeaway");
-  const burned = count("one_on_one_beaten");
+  const burned = count("burned");
 
   if (goals > 0 && assists > 0) {
     takeaways.push(
