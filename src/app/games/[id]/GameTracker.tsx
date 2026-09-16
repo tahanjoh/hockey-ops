@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
+
 import GameNoteButtons from "./GameNoteButtons";
 
 type Shift = {
@@ -27,6 +29,26 @@ const periods = [
   { label: "3rd", value: 3 },
   { label: "OT", value: 4 },
 ];
+
+function EventSubmitButton({
+  label,
+  className,
+}: {
+  label: string;
+  className: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className={`${className} disabled:opacity-70`}
+    >
+      {pending ? "RECORDING..." : label}
+    </button>
+  );
+}
 
 export default function GameTracker({
   addEvent,
@@ -148,12 +170,10 @@ export default function GameTracker({
           value={period}
         />
 
-        <button
-          type="submit"
+        <EventSubmitButton
+          label={label}
           className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold ${impactClass}`}
-        >
-          {label}
-        </button>
+        />
       </form>
     );
   }
