@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -62,6 +63,16 @@ export default async function GamePage({ params }: PageProps) {
     throw new Error(eventsError.message);
   }
 
+  const { data: shifts, error: shiftsError } = await supabase
+    .from("game_shifts")
+    .select("id, period, started_at, ended_at")
+    .eq("game_id", gameId)
+    .order("started_at", { ascending: true });
+
+  if (shiftsError) {
+    throw new Error(shiftsError.message);
+  }
+
   async function addEvent(formData: FormData) {
     "use server";
 
@@ -97,27 +108,19 @@ export default async function GamePage({ params }: PageProps) {
       "sog",
       "goal_for",
       "goal_against",
-      "takeaway",
-      "turnover",
-      "blocked_shot",
-      "exit_possession",
-      "clear",
-      "failed_exit",
-      "entry_possession",
-      "dump_in",
-      "failed_entry",
-      "one_on_one_win",
-      "one_on_one_stop",
-      "burned",
-      "positive_note",
-      "improvement_note",
-      "quick_note",
       "pass",
       "icing",
       "breakaway",
       "body_check",
       "penalty",
       "offside",
+      "takeaway",
+      "turnover",
+      "blocked_shot",
+      "burned",
+      "positive_note",
+      "improvement_note",
+      "quick_note",
     ];
 
     if (!allowed.includes(eventType)) {
@@ -139,6 +142,87 @@ export default async function GamePage({ params }: PageProps) {
     }
 
     redirect(`/games/${gameId}`);
+  }
+
+  async function startShift(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const period = Number(formData.get("period") || 1);
+
+    if (![1, 2, 3, 4].includes(period)) {
+      throw new Error("Invalid period.");
+    }
+
+    const { data: currentGame } = await supabase
+      .from("games")
+      .select("status")
+      .eq("id", gameId)
+      .single();
+
+    if (!currentGame || currentGame.status !== "in_progress") {
+      redirect(`/games/${gameId}/results`);
+    }
+
+    const { error } = await supabase
+      .from("game_shifts")
+      .insert({
+        game_id: gameId,
+        created_by: user.id,
+        period,
+      });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath(`/games/${gameId}`);
+  }
+
+  async function endShift(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const shiftId = String(formData.get("shift_id") || "");
+
+    if (!shiftId) {
+      throw new Error("Missing shift.");
+    }
+
+    const { error } = await supabase
+      .from("game_shifts")
+      .update({
+        ended_at: new Date().toISOString(),
+      })
+      .eq("id", shiftId)
+      .eq("game_id", gameId)
+      .eq("created_by", user.id)
+      .is("ended_at", null);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath(`/games/${gameId}`);
+
   }
 
   async function undoLastEvent() {
@@ -216,18 +300,33 @@ export default async function GamePage({ params }: PageProps) {
       throw new Error("Invalid final score.");
     }
 
-    const { error } = await supabase
+    const completedAt = new Date().toISOString();
+
+    const { error: shiftError } = await supabase
+      .from("game_shifts")
+      .update({
+        ended_at: completedAt,
+      })
+      .eq("game_id", gameId)
+      .eq("created_by", user.id)
+      .is("ended_at", null);
+
+    if (shiftError) {
+      throw new Error(shiftError.message);
+    }
+
+    const { error: gameError } = await supabase
       .from("games")
       .update({
         status: "completed",
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt,
         team_score: teamScore,
         opponent_score: opponentScore,
       })
       .eq("id", gameId);
 
-    if (error) {
-      throw new Error(error.message);
+    if (gameError) {
+      throw new Error(gameError.message);
     }
 
     redirect(`/games/${gameId}/results`);
@@ -279,35 +378,23 @@ export default async function GamePage({ params }: PageProps) {
     const labels: Record<string, string> = {
       goal: "Scored Goal",
       assist: "Got Assist",
-      shot: "Missed Shot",
+      missed_shot: "Missed Shot",
       sog: "SOG",
 
       goal_for: "Line Goal",
       goal_against: "Goal Against",
 
-      takeaway: "Takeaway",
-      turnover: "Turnover",
-      block: "Blocked Shot",
-
       pass: "Pass",
+      icing: "Icing",
       breakaway: "Break Away",
       body_check: "Body Check",
-
       penalty: "Penalty",
-      icing: "Icing",
       offside: "Off Sides",
 
-      one_on_one_win: "1v1 Win",
-      one_on_one_stop: "1v1 Stop",
-      one_on_one_beaten: "Burned",
-
-      exit_possession: "Exit + Possession",
-      clear: "Clear",
-      failed_exit: "Failed Exit",
-
-      entry_possession: "Entry + Possession",
-      dump_in: "Dump In",
-      failed_entry: "Failed Entry",
+      takeaway: "Takeaway",
+      turnover: "Turnover",
+      blocked_shot: "Blocked Shot",
+      burned: "Burned",
 
       positive_note: "Positive Note",
       improvement_note: "Improvement Note",
@@ -388,6 +475,9 @@ export default async function GamePage({ params }: PageProps) {
 
       <GameTracker
         addEvent={addEvent}
+        startShift={startShift}
+        endShift={endShift}
+        shifts={shifts ?? []}
         position={game.position as "forward" | "defense"}
         gameId={game.id}
       />

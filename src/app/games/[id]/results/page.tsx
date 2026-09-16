@@ -58,6 +58,56 @@ export default async function GameResultsPage({
     throw new Error(eventsError.message);
   }
 
+  const { data: shifts, error: shiftsError } = await supabase
+    .from("game_shifts")
+    .select("id, started_at, ended_at")
+    .eq("game_id", gameId)
+    .order("started_at", { ascending: true });
+
+  if (shiftsError) {
+    throw new Error(shiftsError.message);
+  }
+
+  const completedShifts =
+    shifts?.filter((shift) => shift.ended_at) ?? [];
+
+  const totalIceSeconds = completedShifts.reduce(
+    (total, shift) => {
+      const started = new Date(
+        shift.started_at,
+      ).getTime();
+
+      const ended = new Date(
+        shift.ended_at!,
+      ).getTime();
+
+      return (
+        total +
+        Math.max(
+          0,
+          Math.floor((ended - started) / 1000),
+        )
+      );
+    },
+    0,
+  );
+
+  const shiftCount = completedShifts.length;
+
+  const averageShiftSeconds =
+    shiftCount > 0
+      ? Math.round(totalIceSeconds / shiftCount)
+      : 0;
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    return `${minutes}:${String(
+      remainingSeconds,
+    ).padStart(2, "0")}`;
+  };
+
   const count = (type: string) =>
     events?.filter(
       (event) => event.event_type === type,
@@ -408,6 +458,44 @@ export default async function GameResultsPage({
           </div>
         </section>
       )}
+
+      <section className="mt-8">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">
+          Ice Time
+        </h2>
+
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl border px-2 py-3">
+            <div className="text-xl font-bold tabular-nums">
+              {formatTime(totalIceSeconds)}
+            </div>
+
+            <div className="text-[11px] text-gray-500">
+              Time on Ice
+            </div>
+          </div>
+
+          <div className="rounded-xl border px-2 py-3">
+            <div className="text-xl font-bold">
+              {shiftCount}
+            </div>
+
+            <div className="text-[11px] text-gray-500">
+              Shifts
+            </div>
+          </div>
+
+          <div className="rounded-xl border px-2 py-3">
+            <div className="text-xl font-bold tabular-nums">
+              {formatTime(averageShiftSeconds)}
+            </div>
+
+            <div className="text-[11px] text-gray-500">
+              Avg Shift
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">

@@ -1,10 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import GameNoteButtons from "./GameNoteButtons";
+
+type Shift = {
+  id: string;
+  period: number;
+  started_at: string;
+  ended_at: string | null;
+};
 
 type Props = {
   addEvent: (formData: FormData) => void | Promise<void>;
+  startShift: (formData: FormData) => void | Promise<void>;
+  endShift: (formData: FormData) => void | Promise<void>;
+  shifts: Shift[];
   position: "forward" | "defense";
   gameId: string;
 };
@@ -20,10 +30,29 @@ const periods = [
 
 export default function GameTracker({
   addEvent,
+  startShift,
+  endShift,
+  shifts,
   position,
   gameId,
 }: Props) {
   const [period, setPeriod] = useState(1);
+
+  const [isShiftPending, startShiftTransition] =
+    useTransition();
+
+  const [totalIceSeconds, setTotalIceSeconds] =
+    useState(0);
+  const [currentShiftSeconds, setCurrentShiftSeconds] =
+    useState(0);
+
+  const activeShift =
+    shifts.find((shift) => shift.ended_at === null) ?? null;
+
+  const isOnIce = activeShift !== null;
+
+  const shiftStartedAt =
+    activeShift?.started_at ?? null;
 
   useEffect(() => {
     const savedPeriod = sessionStorage.getItem(
@@ -38,6 +67,51 @@ export default function GameTracker({
 
     return () => window.clearTimeout(timer);
   }, [gameId]);
+
+  useEffect(() => {
+    const completedSeconds = shifts.reduce((total, shift) => {
+      if (!shift.ended_at) return total;
+
+      const started = new Date(shift.started_at).getTime();
+      const ended = new Date(shift.ended_at).getTime();
+
+      return total + Math.max(0, Math.floor((ended - started) / 1000));
+    }, 0);
+
+    const timer = window.setTimeout(() => {
+      setTotalIceSeconds(completedSeconds);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [shifts]);
+
+  useEffect(() => {
+    if (!isOnIce || !shiftStartedAt) return;
+
+    const startedAtMs = new Date(shiftStartedAt).getTime();
+
+    function updateTimer() {
+      const elapsed = Math.max(
+        0,
+        Math.floor((Date.now() - startedAtMs) / 1000),
+      );
+
+      setCurrentShiftSeconds(elapsed);
+    }
+
+    updateTimer();
+
+    const timer = window.setInterval(updateTimer, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isOnIce, shiftStartedAt]);
+
+  function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
 
   function selectPeriod(newPeriod: number) {
     setPeriod(newPeriod);
@@ -86,6 +160,78 @@ export default function GameTracker({
 
   return (
     <>
+
+      {/* Time on Ice */}
+      <section className="mt-4 rounded-2xl border bg-gray-50 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">
+              Time on Ice
+            </div>
+
+            <div className="mt-1 text-3xl font-bold tabular-nums">
+              {formatTime(
+                totalIceSeconds +
+                  (isOnIce ? currentShiftSeconds : 0),
+              )}
+            </div>
+
+            {isOnIce && (
+              <div className="mt-1 text-xs font-semibold text-green-700">
+                Current shift {formatTime(currentShiftSeconds)}
+              </div>
+            )}
+          </div>
+
+        {isOnIce && activeShift ? (
+          <form
+            action={(formData) => {
+              startShiftTransition(async () => {
+                await endShift(formData);
+                setCurrentShiftSeconds(0);
+              });
+            }}
+          >
+            <input
+              type="hidden"
+              name="shift_id"
+              value={activeShift.id}
+            />
+
+            <button
+              type="submit"
+              disabled={isShiftPending}
+              className="min-h-14 rounded-xl border-2 border-red-500 bg-red-50 px-5 py-2 font-bold text-red-700 disabled:opacity-50"
+            >
+              {isShiftPending ? "STOPPING..." : "OFF ICE"}
+            </button>
+          </form>
+        ) : (
+          <form
+            action={(formData) => {
+              startShiftTransition(async () => {
+                await startShift(formData);
+              });
+            }}
+          >
+            <input
+              type="hidden"
+              name="period"
+              value={period}
+            />
+
+            <button
+              type="submit"
+              disabled={isShiftPending}
+              className="min-h-14 rounded-xl border-2 border-green-600 bg-green-50 px-5 py-2 font-bold text-green-800 disabled:opacity-50"
+            >
+              {isShiftPending ? "STARTING..." : "ON ICE"}
+            </button>
+          </form>
+        )}
+        </div>
+      </section>
+
       {/* Period */}
       <section className="mt-4">
         <div className="grid grid-cols-4 gap-2">

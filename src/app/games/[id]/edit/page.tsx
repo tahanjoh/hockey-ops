@@ -120,7 +120,7 @@ export default async function EditGamePage({
       );
     }
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("games")
       .update({
         opponent,
@@ -133,8 +133,8 @@ export default async function EditGamePage({
       })
       .eq("id", gameId);
 
-    if (error) {
-      throw new Error(error.message);
+    if (updateError) {
+      throw new Error(updateError.message);
     }
 
     redirect(`/games/${gameId}/results`);
