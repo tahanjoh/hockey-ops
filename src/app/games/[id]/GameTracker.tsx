@@ -60,6 +60,81 @@ export default function GameTracker({
 }: Props) {
   const [period, setPeriod] = useState(1);
 
+  const [wakeLockStatus, setWakeLockStatus] = useState<
+    "active" | "inactive" | "unsupported"
+  >("inactive");
+
+  async function activateScreenAwake() {
+    if (!("wakeLock" in navigator)) {
+      setWakeLockStatus("unsupported");
+      return;
+    }
+
+    try {
+      await navigator.wakeLock.request("screen");
+      setWakeLockStatus("active");
+    } catch {
+      setWakeLockStatus("inactive");
+    }
+  }
+
+
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    let cancelled = false;
+
+    async function requestWakeLock() {
+      if (!("wakeLock" in navigator)) {
+        setWakeLockStatus("unsupported");
+        return;
+      }
+
+      try {
+        const lock = await navigator.wakeLock.request("screen");
+
+        if (cancelled) {
+          await lock.release();
+          return;
+        }
+
+        wakeLock = lock;
+        setWakeLockStatus("active");
+
+        lock.addEventListener("release", () => {
+          setWakeLockStatus("inactive");
+        });
+      } catch {
+        setWakeLockStatus("inactive");
+      }
+    }
+
+    void requestWakeLock();
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void requestWakeLock();
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      cancelled = true;
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+
+      if (wakeLock) {
+        void wakeLock.release();
+      }
+    };
+  }, []);
+
   const [isShiftPending, startShiftTransition] =
     useTransition();
 
@@ -180,6 +255,39 @@ export default function GameTracker({
 
   return (
     <>
+      {/* Screen Awake */}
+      <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl border bg-gray-50 p-4">
+        <div>
+          <div className="text-sm font-bold">
+            Keep Screen Awake
+          </div>
+
+          <div className="mt-1 text-xs text-gray-600">
+            {wakeLockStatus === "active"
+              ? "Screen will stay on while tracking."
+              : wakeLockStatus === "unsupported"
+                ? "Not supported on this device."
+                : "Screen awake is not active."}
+          </div>
+        </div>
+
+        {wakeLockStatus === "active" ? (
+          <span className="rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-800">
+            ON
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={activateScreenAwake}
+            disabled={wakeLockStatus === "unsupported"}
+            className="min-h-11 rounded-xl bg-black px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+          >
+            {wakeLockStatus === "unsupported"
+              ? "Unavailable"
+              : "Activate"}
+          </button>
+        )}
+      </section>
 
       {/* Time on Ice */}
       <section className="mt-4 rounded-2xl border bg-gray-50 p-4">
