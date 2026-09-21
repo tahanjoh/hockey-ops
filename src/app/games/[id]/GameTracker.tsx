@@ -10,11 +10,16 @@ type Shift = {
   period: number;
   started_at: string;
   ended_at: string | null;
+  clock_version: number;
+  clock_running: boolean;
+  clock_started_at: string | null;
+  elapsed_seconds: number;
 };
 
 type Props = {
   addEvent: (formData: FormData) => void | Promise<void>;
   startShift: (formData: FormData) => void | Promise<void>;
+  setShiftClock: (formData: FormData) => void | Promise<void>;
   endShift: (formData: FormData) => void | Promise<void>;
   shifts: Shift[];
   position: "forward" | "defense";
@@ -53,6 +58,7 @@ function EventSubmitButton({
 export default function GameTracker({
   addEvent,
   startShift,
+  setShiftClock,
   endShift,
   shifts,
   position,
@@ -148,9 +154,6 @@ export default function GameTracker({
 
   const isOnIce = activeShift !== null;
 
-  const shiftStartedAt =
-    activeShift?.started_at ?? null;
-
   useEffect(() => {
     const savedPeriod = sessionStorage.getItem(
       `hockey-game-period-${gameId}`,
@@ -169,10 +172,17 @@ export default function GameTracker({
     const completedSeconds = shifts.reduce((total, shift) => {
       if (!shift.ended_at) return total;
 
+      if (shift.clock_version === 2) {
+        return total + shift.elapsed_seconds;
+      }
+
       const started = new Date(shift.started_at).getTime();
       const ended = new Date(shift.ended_at).getTime();
 
-      return total + Math.max(0, Math.floor((ended - started) / 1000));
+      return (
+        total +
+        Math.max(0, Math.floor((ended - started) / 1000))
+      );
     }, 0);
 
     const timer = window.setTimeout(() => {
@@ -183,25 +193,67 @@ export default function GameTracker({
   }, [shifts]);
 
   useEffect(() => {
-    if (!isOnIce || !shiftStartedAt) return;
+    if (!activeShift) {
+      const timer = window.setTimeout(() => {
+        setCurrentShiftSeconds(0);
+      }, 0);
 
-    const startedAtMs = new Date(shiftStartedAt).getTime();
+      return () => window.clearTimeout(timer);
+    }
 
     function updateTimer() {
-      const elapsed = Math.max(
+      if (!activeShift) return;
+
+      if (activeShift.clock_version !== 2) {
+        const startedAtMs = new Date(
+          activeShift.started_at,
+        ).getTime();
+
+        setCurrentShiftSeconds(
+          Math.max(
+            0,
+            Math.floor((Date.now() - startedAtMs) / 1000),
+          ),
+        );
+
+        return;
+      }
+
+      const savedSeconds = activeShift.elapsed_seconds;
+
+      if (
+        !activeShift.clock_running ||
+        !activeShift.clock_started_at
+      ) {
+        setCurrentShiftSeconds(savedSeconds);
+        return;
+      }
+
+      const runningSeconds = Math.max(
         0,
-        Math.floor((Date.now() - startedAtMs) / 1000),
+        Math.floor(
+          (Date.now() -
+            new Date(activeShift.clock_started_at).getTime()) /
+            1000,
+        ),
       );
 
-      setCurrentShiftSeconds(elapsed);
+      setCurrentShiftSeconds(savedSeconds + runningSeconds);
     }
 
     updateTimer();
 
+    if (
+      activeShift.clock_version === 2 &&
+      !activeShift.clock_running
+    ) {
+      return;
+    }
+
     const timer = window.setInterval(updateTimer, 1000);
 
     return () => window.clearInterval(timer);
-  }, [isOnIce, shiftStartedAt]);
+  }, [activeShift]);
 
   function formatTime(seconds: number) {
     const minutes = Math.floor(seconds / 60);
@@ -310,6 +362,35 @@ export default function GameTracker({
               </div>
             )}
           </div>
+
+        {isOnIce && activeShift?.clock_version === 2 && (
+          <form
+            action={(formData) => {
+              startShiftTransition(async () => {
+                await setShiftClock(formData);
+              });
+            }}
+          >
+            <input type="hidden" name="shift_id" value={activeShift.id} />
+            <input
+              type="hidden"
+              name="command"
+              value={activeShift.clock_running ? "stop" : "start"}
+            />
+
+            <button
+              type="submit"
+              disabled={isShiftPending}
+              className="w-full rounded-xl bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              {isShiftPending
+                ? "UPDATING CLOCK..."
+                : activeShift.clock_running
+                  ? "STOP CLOCK"
+                  : "START CLOCK"}
+            </button>
+          </form>
+        )}
 
         {isOnIce && activeShift ? (
           <form

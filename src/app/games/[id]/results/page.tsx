@@ -60,7 +60,7 @@ export default async function GameResultsPage({
 
   const { data: shifts, error: shiftsError } = await supabase
     .from("game_shifts")
-    .select("id, started_at, ended_at")
+    .select("id, started_at, ended_at, clock_version, elapsed_seconds")
     .eq("game_id", gameId)
     .order("started_at", { ascending: true });
 
@@ -73,6 +73,10 @@ export default async function GameResultsPage({
 
   const totalIceSeconds = completedShifts.reduce(
     (total, shift) => {
+      if (shift.clock_version === 2) {
+        return total + shift.elapsed_seconds;
+      }
+
       const started = new Date(
         shift.started_at,
       ).getTime();

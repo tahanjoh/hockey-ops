@@ -65,7 +65,9 @@ export default async function GamePage({ params }: PageProps) {
 
   const { data: shifts, error: shiftsError } = await supabase
     .from("game_shifts")
-    .select("id, period, started_at, ended_at")
+    .select(
+      "id, period, started_at, ended_at, clock_version, clock_running, clock_started_at, elapsed_seconds",
+    )
     .eq("game_id", gameId)
     .order("started_at", { ascending: true });
 
@@ -179,7 +181,44 @@ export default async function GamePage({ params }: PageProps) {
         game_id: gameId,
         created_by: user.id,
         period,
+        clock_version: 2,
+        clock_running: true,
+        clock_started_at: new Date().toISOString(),
+        elapsed_seconds: 0,
       });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath(`/games/${gameId}`);
+  }
+
+  async function setShiftClock(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    const shiftId = String(formData.get("shift_id") || "");
+    const command = String(formData.get("command") || "");
+
+    if (!shiftId || !["start", "stop"].includes(command)) {
+      throw new Error("Invalid clock request.");
+    }
+
+    const { error } = await supabase.rpc("set_shift_clock", {
+      p_shift_id: shiftId,
+      p_game_id: gameId,
+      p_running: command === "start",
+    });
 
     if (error) {
       throw new Error(error.message);
@@ -207,15 +246,10 @@ export default async function GamePage({ params }: PageProps) {
       throw new Error("Missing shift.");
     }
 
-    const { error } = await supabase
-      .from("game_shifts")
-      .update({
-        ended_at: new Date().toISOString(),
-      })
-      .eq("id", shiftId)
-      .eq("game_id", gameId)
-      .eq("created_by", user.id)
-      .is("ended_at", null);
+    const { error } = await supabase.rpc("finish_game_shift", {
+      p_shift_id: shiftId,
+      p_game_id: gameId,
+    });
 
     if (error) {
       throw new Error(error.message);
@@ -302,17 +336,29 @@ export default async function GamePage({ params }: PageProps) {
 
     const completedAt = new Date().toISOString();
 
-    const { error: shiftError } = await supabase
+    const { data: activeShifts, error: shiftsError } = await supabase
       .from("game_shifts")
-      .update({
-        ended_at: completedAt,
-      })
+      .select("id")
       .eq("game_id", gameId)
       .eq("created_by", user.id)
       .is("ended_at", null);
 
-    if (shiftError) {
-      throw new Error(shiftError.message);
+    if (shiftsError) {
+      throw new Error(shiftsError.message);
+    }
+
+    for (const shift of activeShifts ?? []) {
+      const { error: shiftError } = await supabase.rpc(
+        "finish_game_shift",
+        {
+          p_shift_id: shift.id,
+          p_game_id: gameId,
+        },
+      );
+
+      if (shiftError) {
+        throw new Error(shiftError.message);
+      }
     }
 
     const { error: gameError } = await supabase
@@ -476,6 +522,7 @@ export default async function GamePage({ params }: PageProps) {
       <GameTracker
         addEvent={addEvent}
         startShift={startShift}
+        setShiftClock={setShiftClock}
         endShift={endShift}
         shifts={shifts ?? []}
         position={game.position as "forward" | "defense"}
