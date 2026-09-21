@@ -265,6 +265,52 @@ export default async function EditGamePage({
     redirect(`/games/${safeGameId}/edit`);
   }
 
+  async function deleteGame(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+
+    if (formData.get("confirmation") !== "DELETE") {
+      throw new Error("Game deletion was not confirmed.");
+    }
+
+    // Verify the signed-in user belongs to this game's player.
+    const { data: membership, error: membershipError } = await supabase
+      .from("player_memberships")
+      .select("id")
+      .eq("player_id", playerId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (membershipError) {
+      throw new Error(membershipError.message);
+    }
+
+    if (!membership) {
+      throw new Error("Game not found or access denied.");
+    }
+    
+    const { error: deleteError } = await supabase
+      .from("games")
+      .delete()
+      .eq("id", gameId)
+      .eq("player_id", playerId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    redirect("/");
+  }
+
   const player = Array.isArray(game.players)
     ? game.players[0]
     : game.players;
@@ -657,6 +703,44 @@ export default async function EditGamePage({
             </>
           )}
         </div>
+      </section>
+      <section className="mt-12 rounded-2xl border border-red-200 p-5">
+        <h2 className="text-lg font-bold text-red-700">
+          Delete Game
+        </h2>
+
+        <p className="mt-2 text-sm text-gray-600">
+          Permanently delete this game, including all recorded
+          events and shifts. This cannot be undone.
+        </p>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer rounded-xl border border-red-300 px-4 py-3 text-center font-semibold text-red-700">
+            Delete Game…
+          </summary>
+
+          <form action={deleteGame} className="mt-4 space-y-3">
+            <p className="text-sm font-semibold">
+              Type DELETE to confirm:
+            </p>
+
+            <input
+              name="confirmation"
+              required
+              pattern="DELETE"
+              autoComplete="off"
+              placeholder="DELETE"
+              className="w-full rounded-xl border px-4 py-3"
+            />
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-red-700 px-4 py-3 font-semibold text-white"
+            >
+              Permanently Delete Game
+            </button>
+          </form>
+        </details>
       </section>
     </main>
   );
