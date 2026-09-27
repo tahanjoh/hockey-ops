@@ -8,12 +8,12 @@ type NoteType =
   | "quick_note";
 
 type Props = {
-  addEvent: (formData: FormData) => void | Promise<void>;
+  recordEvent: (formData: FormData) => void;
   period: number;
 };
 
 export default function GameNoteButtons({
-  addEvent,
+  recordEvent,
   period,
 }: Props) {
   const [activeType, setActiveType] =
@@ -91,8 +91,9 @@ export default function GameNoteButtons({
               </div>
 
               <form
-                action={async (formData) => {
-                  await addEvent(formData);
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  recordEvent(new FormData(event.currentTarget));
                   closeNote();
                 }}
                 className="mt-4"
@@ -124,9 +125,7 @@ export default function GameNoteButtons({
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <button
                     type="submit"
-                    onClick={() =>
-                      setNoteText("")
-                    }
+                    onClick={() => setNoteText("")}
                     className="min-h-14 rounded-2xl border font-semibold"
                   >
                     Save Without Note

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import GameTracker from "./GameTracker";
 import EndGameDialog from "./EndGameDialog";
+import ActivityClock from "./ActivityClock";
 
 type PageProps = {
   params: Promise<{
@@ -51,11 +52,9 @@ export default async function GamePage({ params }: PageProps) {
     redirect(`/games/${gameId}/results`);
   }
 
-  const gamePlayerId = game.player_id;
-
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, event_type, note_text, period, created_at")
+    .select("id, event_type, note_text, period, clock_time, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -100,6 +99,8 @@ export default async function GamePage({ params }: PageProps) {
 
     const eventType = String(formData.get("event_type") || "");
     const noteText = String(formData.get("note_text") || "").trim();
+    const clientEventId = String(formData.get("client_event_id") || "");
+    const clockTime = String(formData.get("clock_time") || "").trim();
 
     const periodValue = Number(formData.get("period") || 1);
 
@@ -128,22 +129,59 @@ export default async function GamePage({ params }: PageProps) {
     if (!allowed.includes(eventType)) {
       throw new Error("Invalid event type.");
     }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientEventId)) {
+      throw new Error("Invalid event identifier.");
+    }
+    if (clockTime && !/^[0-9]{1,3}:[0-5][0-9]$/.test(clockTime)) {
+      throw new Error("Use M:SS for the game clock.");
+    }
+    if (![1, 2, 3, 4].includes(periodValue)) {
+      throw new Error("Invalid period.");
+    }
 
     const { error } = await supabase
       .from("game_events")
       .insert({
         game_id: gameId,
         created_by: user.id,
+        client_event_id: clientEventId,
         event_type: eventType,
         note_text: noteText || null,
         period: periodValue,
+        clock_time: clockTime || null,
       });
 
     if (error) {
-      throw new Error(error.message);
+      if (error.code !== "23505") throw new Error(error.message);
+      const { data: existing } = await supabase.from("game_events")
+        .select("id").eq("client_event_id", clientEventId)
+        .eq("game_id", gameId).eq("created_by", user.id).maybeSingle();
+      if (!existing) throw new Error(error.message);
     }
 
-    redirect(`/games/${gameId}`);
+    revalidatePath(`/games/${gameId}`);
+  }
+
+  async function updateEventClock(formData: FormData) {
+    "use server";
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Please sign in again.");
+    const eventId = String(formData.get("event_id") || "");
+    const clockTime = String(formData.get("clock_time") || "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(eventId) ||
+        (clockTime && !/^[0-9]{1,3}:[0-5][0-9]$/.test(clockTime))) {
+      throw new Error("Use M:SS for the game clock.");
+    }
+    const { data: currentGame } = await supabase.from("games")
+      .select("status").eq("id", gameId).single();
+    if (currentGame?.status !== "in_progress") throw new Error("Game is closed.");
+    const { data, error } = await supabase.from("game_events")
+      .update({ clock_time: clockTime || null })
+      .eq("id", eventId).eq("game_id", gameId).eq("created_by", user.id)
+      .select("id").single();
+    if (error || !data) throw new Error(error?.message || "Could not save clock time.");
+    revalidatePath(`/games/${gameId}`);
   }
 
   async function startShift(formData: FormData) {
@@ -683,6 +721,7 @@ export default async function GamePage({ params }: PageProps) {
                     ? "OT"
                     : `P${event.period}`
                   : "—"}
+                <ActivityClock eventId={event.id} initialTime={event.clock_time} updateEventClock={updateEventClock} />
               </div>
             </div>
           ))
@@ -755,6 +794,10 @@ export default async function GamePage({ params }: PageProps) {
                             : `P${event.period}`
                           : "—"}
                       </span>
+
+                      <span>·</span>
+
+                      <ActivityClock eventId={event.id} initialTime={event.clock_time} updateEventClock={updateEventClock} />
 
                       <span>·</span>
 

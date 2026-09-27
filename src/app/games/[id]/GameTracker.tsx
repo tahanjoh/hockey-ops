@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import GameNoteButtons from "./GameNoteButtons";
+import { normalizeClock } from "./clockFormat";
 
 type Shift = {
   id: string;
@@ -17,7 +18,7 @@ type Shift = {
 };
 
 type Props = {
-  addEvent: (formData: FormData) => void | Promise<void>;
+  addEvent: (formData: FormData) => Promise<void>;
   startShift: (formData: FormData) => void | Promise<void>;
   setShiftClock: (formData: FormData) => void | Promise<void>;
   endShift: (formData: FormData) => void | Promise<void>;
@@ -35,25 +36,13 @@ const periods = [
   { label: "OT", value: 4 },
 ];
 
-function EventSubmitButton({
-  label,
-  className,
-}: {
-  label: string;
-  className: string;
-}) {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={`${className} disabled:opacity-70`}
-    >
-      {pending ? "RECORDING..." : label}
-    </button>
-  );
-}
+type QueuedEvent = {
+  client_event_id: string;
+  event_type: string;
+  period: number;
+  note_text: string;
+  clock_time: string;
+};
 
 export default function GameTracker({
   addEvent,
@@ -65,6 +54,79 @@ export default function GameTracker({
   gameId,
 }: Props) {
   const [period, setPeriod] = useState(1);
+  const router = useRouter();
+  const queueKey = `hockey-pending-events-${gameId}`;
+  const queueRef = useRef<QueuedEvent[]>([]);
+  const flushingRef = useRef(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [saveStatus, setSaveStatus] = useState("");
+
+  const flushQueue = useCallback(async () => {
+    if (flushingRef.current) return;
+    flushingRef.current = true;
+    try {
+      while (queueRef.current.length) {
+        const item = queueRef.current[0];
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(item)) formData.set(key, String(value));
+        try {
+          await addEvent(formData);
+        } catch {
+          setSaveStatus("Not saved yet. Check connection and retry.");
+          break;
+        }
+        queueRef.current = queueRef.current.filter(
+          (queued) => queued.client_event_id !== item.client_event_id,
+        );
+        localStorage.setItem(queueKey, JSON.stringify(queueRef.current));
+        setPendingCount(queueRef.current.length);
+        setSaveStatus(queueRef.current.length ? "Saving…" : "Saved");
+        router.refresh();
+      }
+    } finally {
+      flushingRef.current = false;
+    }
+  }, [addEvent, queueKey, router]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(queueKey) || "[]");
+      queueRef.current = Array.isArray(saved) ? saved : [];
+      setPendingCount(queueRef.current.length);
+      if (queueRef.current.length) void flushQueue();
+    } catch {
+      setSaveStatus("Could not read saved activity on this device.");
+    }
+    const retry = () => void flushQueue();
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [queueKey, flushQueue]);
+
+  function recordEvent(formData: FormData) {
+    const clockTime = normalizeClock(String(formData.get("clock_time") || ""));
+    if (clockTime === null) {
+      setSaveStatus("Clock must be MM:SS with seconds from 00 to 59.");
+      return;
+    }
+    const item: QueuedEvent = {
+      client_event_id: crypto.randomUUID(),
+      event_type: String(formData.get("event_type") || ""),
+      period: Number(formData.get("period") || 1),
+      note_text: String(formData.get("note_text") || ""),
+      clock_time: clockTime,
+    };
+    queueRef.current = [...queueRef.current, item];
+    try {
+      localStorage.setItem(queueKey, JSON.stringify(queueRef.current));
+    } catch {
+      queueRef.current = queueRef.current.filter((event) => event !== item);
+      setSaveStatus("Device storage unavailable. Activity was not recorded.");
+      return;
+    }
+    setPendingCount(queueRef.current.length);
+    setSaveStatus("Saving…");
+    void flushQueue();
+  }
 
   const [wakeLockStatus, setWakeLockStatus] = useState<
     "active" | "inactive" | "unsupported"
@@ -284,7 +346,10 @@ export default function GameTracker({
           : "border-gray-300 bg-white text-gray-900";
 
     return (
-      <form action={addEvent}>
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        recordEvent(new FormData(event.currentTarget));
+      }}>
         <input
           type="hidden"
           name="event_type"
@@ -297,10 +362,7 @@ export default function GameTracker({
           value={period}
         />
 
-        <EventSubmitButton
-          label={label}
-          className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold ${impactClass}`}
-        />
+        <button type="submit" className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold ${impactClass}`}>{label}</button>
       </form>
     );
   }
@@ -340,6 +402,13 @@ export default function GameTracker({
           </button>
         )}
       </section>
+
+      {(pendingCount > 0 || saveStatus) && (
+        <div role="status" className="mt-2 px-1 text-xs text-gray-600">
+          {pendingCount ? `${pendingCount} activity ${pendingCount === 1 ? "entry" : "entries"} waiting to save. ` : ""}{saveStatus}
+          {pendingCount > 0 && <button type="button" onClick={() => void flushQueue()} className="ml-2 font-bold text-blue-700">Retry</button>}
+        </div>
+      )}
 
       {/* Time on Ice */}
       <section className="mt-4 rounded-2xl border bg-gray-50 p-4">
@@ -622,7 +691,7 @@ export default function GameTracker({
         </h2>
 
         <GameNoteButtons
-          addEvent={addEvent}
+          recordEvent={recordEvent}
           period={period}
         />
       </section>
