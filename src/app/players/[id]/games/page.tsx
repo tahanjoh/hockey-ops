@@ -58,6 +58,15 @@ export default async function PlayerGamesPage({
     throw new Error(gamesError.message);
   }
 
+  const { data: activeGames, error: activeGamesError } = await supabase
+    .from("games")
+    .select("id, opponent, game_date")
+    .eq("player_id", playerId)
+    .eq("status", "in_progress")
+    .order("game_date", { ascending: false });
+
+  if (activeGamesError) throw new Error(activeGamesError.message);
+
     const gamesPlayed = games?.length ?? 0;
 
     const seasonGoals =
@@ -157,6 +166,23 @@ export default async function PlayerGamesPage({
         </div>
     </section>
     )}
+
+      {!!activeGames?.length && (
+        <section className="mt-6">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">In Progress</h2>
+          <div className="space-y-3">
+            {activeGames.map((game) => (
+              <Link key={game.id} href={`/games/${game.id}`} className="block rounded-2xl border-2 border-blue-500 bg-blue-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-bold">vs {game.opponent}</span>
+                  <span className="text-xs text-gray-600">{game.game_date}</span>
+                </div>
+                <div className="mt-2 font-semibold text-blue-700">Resume Game →</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mt-6 space-y-3">
         {!games?.length ? (
