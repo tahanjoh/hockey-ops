@@ -25,6 +25,7 @@ type Props = {
   shifts: Shift[];
   position: "forward" | "defense";
   gameId: string;
+  savedEventIds: string[];
 };
 
 type Impact = "positive" | "negative" | "neutral";
@@ -52,6 +53,7 @@ export default function GameTracker({
   shifts,
   position,
   gameId,
+  savedEventIds,
 }: Props) {
   const [period, setPeriod] = useState(1);
   const router = useRouter();
@@ -60,6 +62,9 @@ export default function GameTracker({
   const flushingRef = useRef(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [saveStatus, setSaveStatus] = useState("");
+  const [pendingTypes, setPendingTypes] = useState<string[]>([]);
+  const addEventRef = useRef(addEvent);
+  useEffect(() => { addEventRef.current = addEvent; }, [addEvent]);
 
   const flushQueue = useCallback(async () => {
     if (flushingRef.current) return;
@@ -70,7 +75,7 @@ export default function GameTracker({
         const formData = new FormData();
         for (const [key, value] of Object.entries(item)) formData.set(key, String(value));
         try {
-          await addEvent(formData);
+          await addEventRef.current(formData);
         } catch {
           setSaveStatus("Not saved yet. Check connection and retry.");
           break;
@@ -80,19 +85,21 @@ export default function GameTracker({
         );
         localStorage.setItem(queueKey, JSON.stringify(queueRef.current));
         setPendingCount(queueRef.current.length);
+        setPendingTypes(queueRef.current.map((event) => event.event_type));
         setSaveStatus(queueRef.current.length ? "Saving…" : "Saved");
         router.refresh();
       }
     } finally {
       flushingRef.current = false;
     }
-  }, [addEvent, queueKey, router]);
+  }, [queueKey, router]);
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(queueKey) || "[]");
       queueRef.current = Array.isArray(saved) ? saved : [];
       setPendingCount(queueRef.current.length);
+      setPendingTypes(queueRef.current.map((event) => event.event_type));
       if (queueRef.current.length) void flushQueue();
     } catch {
       setSaveStatus("Could not read saved activity on this device.");
@@ -101,6 +108,19 @@ export default function GameTracker({
     window.addEventListener("online", retry);
     return () => window.removeEventListener("online", retry);
   }, [queueKey, flushQueue]);
+
+  // A refreshed server list is also confirmation, even if the action response
+  // arrives late. Never keep displaying Saving for an event already persisted.
+  useEffect(() => {
+    const confirmed = new Set(savedEventIds);
+    const remaining = queueRef.current.filter((event) => !confirmed.has(event.client_event_id));
+    if (remaining.length === queueRef.current.length) return;
+    queueRef.current = remaining;
+    try { localStorage.setItem(queueKey, JSON.stringify(remaining)); } catch { /* Server confirmation still stands. */ }
+    setPendingCount(remaining.length);
+    setPendingTypes(remaining.map((event) => event.event_type));
+    setSaveStatus(remaining.length ? "Saving…" : "Saved");
+  }, [savedEventIds, queueKey]);
 
   function recordEvent(formData: FormData) {
     const clockTime = normalizeClock(String(formData.get("clock_time") || ""));
@@ -124,6 +144,7 @@ export default function GameTracker({
       return;
     }
     setPendingCount(queueRef.current.length);
+    setPendingTypes(queueRef.current.map((event) => event.event_type));
     setSaveStatus("Saving…");
     void flushQueue();
   }
@@ -362,7 +383,10 @@ export default function GameTracker({
           value={period}
         />
 
-        <button type="submit" className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold ${impactClass}`}>{label}</button>
+        <button type="submit" disabled={pendingTypes.includes(eventType)} aria-busy={pendingTypes.includes(eventType)}
+          className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold disabled:opacity-70 ${impactClass}`}>
+          {pendingTypes.includes(eventType) ? <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />Saving…</span> : label}
+        </button>
       </form>
     );
   }

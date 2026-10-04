@@ -54,7 +54,7 @@ export default async function GamePage({ params }: PageProps) {
 
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, event_type, note_text, period, clock_time, created_at")
+    .select("id, client_event_id, event_type, note_text, period, clock_time, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -565,6 +565,7 @@ export default async function GamePage({ params }: PageProps) {
         shifts={shifts ?? []}
         position={game.position as "forward" | "defense"}
         gameId={game.id}
+        savedEventIds={(events ?? []).map((event) => event.client_event_id).filter((id): id is string => Boolean(id))}
       />
 
       <section className="mt-8">
