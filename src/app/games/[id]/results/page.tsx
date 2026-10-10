@@ -50,7 +50,7 @@ export default async function GameResultsPage({
 
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, event_type, note_text, period, clock_time, created_at")
+    .select("id, event_type, note_text, period, clock_time, video_url, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -718,7 +718,10 @@ export default async function GameResultsPage({
               };
               return (
                 <div key={event.id} className="flex items-center justify-between gap-3 border-b px-4 py-3 last:border-b-0">
-                  <span className="font-semibold">{labels[event.event_type] ?? event.event_type.replaceAll("_", " ")}</span>
+                  <div>
+                    <span className="font-semibold">{labels[event.event_type] ?? event.event_type.replaceAll("_", " ")}</span>
+                    {event.video_url && <a href={event.video_url} target="_blank" rel="noopener noreferrer" className="mt-1 block text-sm font-semibold text-blue-700">Watch Play ↗</a>}
+                  </div>
                   <span className="text-sm text-gray-600 tabular-nums">
                     {event.period === 4 ? "OT" : event.period ? `P${event.period}` : "—"}
                     {event.clock_time && ` · Clock ${event.clock_time}`}
@@ -760,6 +763,7 @@ export default async function GameResultsPage({
                     {event.note_text ||
                       "No details added"}
                   </div>
+                  {event.video_url && <a href={event.video_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold text-blue-700">Watch Play ↗</a>}
 
                   <div className="mt-2 text-xs text-gray-400">
                     {event.period

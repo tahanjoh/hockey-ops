@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import ActivityVideo from "../ActivityVideo";
+import { updateActivityVideo } from "../videoActions";
 
 type PageProps = {
   params: Promise<{
@@ -52,7 +54,7 @@ export default async function EditGamePage({
 
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, event_type, created_at")
+    .select("id, event_type, note_text, period, clock_time, video_url, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -522,6 +524,25 @@ export default async function EditGamePage({
           Save Game Details
         </button>
       </form>
+
+      {!!events?.length && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Activity Videos</h2>
+          <div className="space-y-3">
+            {events.map((event) => (
+              <div key={event.id} className="rounded-xl border p-4">
+                <div className="font-semibold capitalize">{event.event_type.replaceAll("_", " ")}</div>
+                {event.note_text && <p className="mt-1 text-sm text-gray-600">{event.note_text}</p>}
+                <p className="mt-1 text-xs text-gray-500">
+                  {event.period === 4 ? "OT" : event.period ? `P${event.period}` : "—"}
+                  {event.clock_time && ` · Clock ${event.clock_time}`}
+                </p>
+                <ActivityVideo initialUrl={event.video_url} saveVideo={updateActivityVideo.bind(null, gameId, event.id)} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">

@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import GameTracker from "./GameTracker";
 import EndGameDialog from "./EndGameDialog";
 import ActivityClock from "./ActivityClock";
+import ActivityVideo from "./ActivityVideo";
+import { updateActivityVideo } from "./videoActions";
 
 type PageProps = {
   params: Promise<{
@@ -54,7 +56,7 @@ export default async function GamePage({ params }: PageProps) {
 
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, client_event_id, event_type, note_text, period, clock_time, created_at")
+    .select("id, client_event_id, event_type, note_text, period, clock_time, video_url, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -714,6 +716,7 @@ export default async function GamePage({ params }: PageProps) {
             >
               <div className="font-semibold">
                 {eventLabel(event.event_type)}
+                <ActivityVideo initialUrl={event.video_url} saveVideo={updateActivityVideo.bind(null, gameId, event.id)} />
               </div>
 
               <div className="text-sm text-gray-500">
@@ -786,6 +789,7 @@ export default async function GamePage({ params }: PageProps) {
                     <div className="mt-1 text-sm text-gray-600">
                       {event.note_text || "No details added"}
                     </div>
+                    <ActivityVideo initialUrl={event.video_url} saveVideo={updateActivityVideo.bind(null, gameId, event.id)} />
 
                     <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                       <span>
