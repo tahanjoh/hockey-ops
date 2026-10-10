@@ -50,7 +50,7 @@ export default async function GameResultsPage({
 
   const { data: events, error: eventsError } = await supabase
     .from("game_events")
-    .select("id, event_type, note_text, period, created_at")
+    .select("id, event_type, note_text, period, clock_time, created_at")
     .eq("game_id", gameId)
     .order("created_at", { ascending: true });
 
@@ -705,6 +705,31 @@ export default async function GameResultsPage({
         )}
       </section>
 
+      {!!events?.some((event) => !["positive_note", "improvement_note", "quick_note"].includes(event.event_type)) && (
+        <section className="mt-8">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Game Activity</h2>
+          <div className="mt-3 overflow-hidden rounded-2xl border">
+            {events.filter((event) => !["positive_note", "improvement_note", "quick_note"].includes(event.event_type)).map((event) => {
+              const labels: Record<string, string> = {
+                goal: "Scored Goal", assist: "Got Assist", sog: "SOG", missed_shot: "Missed Shot",
+                goal_for: "Line Goal", goal_against: "Goal Against", pass: "Pass", icing: "Icing",
+                breakaway: "Break Away", body_check: "Body Check", penalty: "Penalty", offside: "Off Sides",
+                takeaway: "Takeaway", turnover: "Turnover", blocked_shot: "Blocked Shot", burned: "Burned",
+              };
+              return (
+                <div key={event.id} className="flex items-center justify-between gap-3 border-b px-4 py-3 last:border-b-0">
+                  <span className="font-semibold">{labels[event.event_type] ?? event.event_type.replaceAll("_", " ")}</span>
+                  <span className="text-sm text-gray-600 tabular-nums">
+                    {event.period === 4 ? "OT" : event.period ? `P${event.period}` : "—"}
+                    {event.clock_time && ` · Clock ${event.clock_time}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {notes.length > 0 && (
         <section className="mt-8">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">
@@ -742,6 +767,7 @@ export default async function GameResultsPage({
                         ? "OT"
                         : `P${event.period}`
                       : "—"}
+                    {event.clock_time && <span className="ml-2 tabular-nums">· Clock {event.clock_time}</span>}
                   </div>
                 </div>
               );
