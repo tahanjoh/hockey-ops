@@ -1,3 +1,4 @@
+import "./home-arena.css";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -33,7 +34,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-md px-6 py-8">
+    <main className="hockey-home mx-auto min-h-screen max-w-md px-6 py-8">
       <AccountControls email={user.email ?? null} />
 
       <div>
@@ -99,6 +100,13 @@ export default async function HomePage() {
                         className="rounded-xl bg-black px-4 py-3 text-center font-semibold text-white"
                       >
                         Start Game
+                      </Link>
+
+                      <Link
+                        href={`/players/${player.id}/summary`}
+                        className="rounded-xl border px-4 py-3 text-center font-semibold"
+                      >
+                        Player Summary
                       </Link>
 
                       <Link

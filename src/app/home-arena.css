@@ -1,0 +1,177 @@
+/* Home page only. Existing links, forms and account controls stay intact. */
+body:has(.hockey-home) {
+  background: #061122;
+  color: #edf6ff;
+  background-image: radial-gradient(ellipse at 50% 0%, #133751 0%, transparent 62%);
+}
+.hockey-home {
+  max-width: 560px;
+  padding: 24px 20px 56px;
+  color: #edf6ff;
+}
+.hockey-home > div:has(h1) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: 26px;
+  padding: 30px 24px 28px;
+  border: 1px solid #34516c;
+  border-radius: 24px;
+  background: linear-gradient(125deg, #143950, #0c1f35 70%);
+  box-shadow: 0 18px 40px #0004;
+}
+.hockey-home > div:has(h1)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 265px;
+  height: 160px;
+  right: -90px;
+  top: -3px;
+  border: 2px solid #8fdfff38;
+  border-radius: 65px;
+  transform: rotate(-24deg);
+  background: radial-gradient(circle at center, transparent 0 32px, #79cfff38 33px 34px, transparent 35px), linear-gradient(90deg, transparent 32%, #7cccff35 32% 33%, transparent 33% 49.5%, #fa526442 49.5% 50.5%, transparent 50.5% 67%, #7cccff35 67% 68%, transparent 68%);
+}
+.hockey-home > div:has(h1)::after {
+  content: "TRACK YOUR GAME. BUILD YOUR EDGE.";
+  display: block;
+  margin-top: 15px;
+  color: #b0cede;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .15em;
+}
+.hockey-home h1 {
+  font-size: clamp(34px, 9vw, 46px);
+  line-height: 1.1;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+  text-shadow: 0 3px 20px #0003;
+}
+.hockey-home > div:has(h1) > p {
+  color: #72defc;
+  font-size: 10px;
+  letter-spacing: .25em;
+}
+.hockey-home h2 {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+}
+.hockey-home h2::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  background: #62ddf7;
+  margin-right: 9px;
+  vertical-align: -2px;
+  border-radius: 2px;
+}
+.hockey-home :is(.text-gray-500, .text-gray-400) { color: #a2b5c9; }
+.hockey-home a[href="/players/new"] { color: #74defa; text-underline-offset: 4px; }
+.hockey-home div:has(> div > h3) {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid #385068;
+  border-radius: 22px;
+  background: linear-gradient(150deg, #172c43, #0e1c2f);
+  box-shadow: 0 15px 35px #0003;
+}
+.hockey-home div:has(> div > h3)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #73e4ff 0% 68%, #f05268 68% 76%, #fff 76% 80%, #1c89ce 80%);
+}
+.hockey-home div:has(> div > h3)::after {
+  content: "PLAYER";
+  position: absolute;
+  top: 23px;
+  right: 20px;
+  color: #75d9ef;
+  border: 1px solid #426174;
+  border-radius: 5px;
+  padding: 4px 6px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.hockey-home h3 { max-width: calc(100% - 72px); font-size: 25px; line-height: 1.2; letter-spacing: -.025em; }
+.hockey-home a[href^="/games/new"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  background: linear-gradient(105deg, #7de8ff, #4fc5ed);
+  border: 1px solid #97efff;
+  color: #052137;
+  font-weight: 800;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px #47cef51c;
+}
+.hockey-home a[href^="/games/new"]::before { content: "▶"; font-size: 11px; }
+.hockey-home a[href$="/summary"], .hockey-home a[href$="/games"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  background: #14293c;
+  color: #e5f4ff;
+  border: 1px solid #3a566e;
+  border-radius: 12px;
+}
+.hockey-home a[href$="/summary"]::before { content: "▥"; color: #75def8; font-size: 18px; }
+.hockey-home a[href$="/games"]::before { content: "↺"; color: #75def8; font-size: 21px; }
+.hockey-home a[href^="/sharing"] {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 46px;
+  margin-top: 16px;
+  padding: 11px 16px;
+  background: #10283a;
+  color: #afebfb;
+  border: 1px solid #36566c;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hockey-home > :is(div, section):has(button):not(:has(h1)):not(:has(h3)) {
+  border-color: #2e465c;
+  background: #0c1b2c;
+  border-radius: 15px;
+  padding: 13px 16px;
+  font-size: 12px;
+}
+.hockey-home button {
+  min-height: 40px;
+  border: 1px solid #486278;
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: #172c40;
+  color: #f0f7ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.hockey-home a, .hockey-home button { transition: background .15s, border-color .15s, transform .15s; }
+.hockey-home :is(a, button):focus-visible { outline: 3px solid #98eaff; outline-offset: 4px; }
+@media (hover: hover) {
+  .hockey-home :is(a, button):hover { border-color: #86deef; filter: brightness(1.1); }
+}
+@media (prefers-reduced-motion: reduce) { .hockey-home a, .hockey-home button { transition: none; } }
+@media (max-width: 360px) {
+  .hockey-home { padding: 16px 12px 40px; }
+  .hockey-home div:has(> div > h3) { padding: 20px 16px; }
+  .hockey-home > :is(div, section):has(button) { flex-wrap: wrap; gap: 12px; }
+}
