@@ -47,6 +47,11 @@ export default function SharingPage() {
     try {
       const { error } = await supabase.rpc(name, args);
       if (error) { setMessage(error.message); return; }
+      if (name === "hockey_accept_invitation") {
+        // Reload Players so newly granted membership appears immediately.
+        window.location.assign("/");
+        return;
+      }
       const { data, error: refreshError } = await supabase.rpc("hockey_sharing_context");
       if (refreshError) { setMessage(`${success} Refresh the page to see the updated list.`); return; }
       const next = data as Context;
@@ -67,7 +72,7 @@ export default function SharingPage() {
     {ready && <>
       <section className="mt-6 rounded-2xl border p-4">
         <h2 className="text-lg font-bold">Invitations for you</h2>
-        {!context.incoming.length && <p className="mt-2 text-sm text-gray-500">No pending invitations for your verified email.</p>}
+        {!context.incoming.length && <p className="mt-2 text-sm text-gray-500">No invitations waiting for you.</p>}
         {context.incoming.map(invite => <div key={invite.id} className="mt-4 border-t pt-3">
           <p className="font-semibold">{invite.player_name}</p>
           <p className="mt-1 text-sm text-gray-600">Accept to share game entry and results. Expires {new Date(invite.expires_at).toLocaleDateString()}.</p>
@@ -92,8 +97,8 @@ export default function SharingPage() {
         </form> : <p className="mt-2 text-sm text-gray-500">Accept an invitation to see your shared player here.</p>}
       </section>
       <section className="mt-6 rounded-2xl border p-4">
-        <h2 className="text-lg font-bold">Access you’ve shared</h2>
-        {!context.outgoing.length && <p className="mt-2 text-sm text-gray-500">You haven’t shared any players yet.</p>}
+        <h2 className="text-lg font-bold">Invitations you sent</h2>
+        {!context.outgoing.length && <p className="mt-2 text-sm text-gray-500">You haven’t sent any invitations yet.</p>}
         {context.outgoing.map(invite => <div key={invite.id} className="mt-4 border-t pt-3">
           <p className="font-semibold">{invite.player_name}</p><p className="break-all text-sm">{invite.email}</p>
           <p className="mt-1 text-sm capitalize text-gray-500">{invite.status === "pending" && new Date(invite.expires_at) < new Date() ? "Expired" : invite.status}</p>
