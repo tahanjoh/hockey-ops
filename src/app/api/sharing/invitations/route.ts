@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     invitationEmailSettings();
     const name = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "A parent";
-    providerId = await sendPlayerInvitation({ to: input.email, playerName: input.player_name, inviterName: name, expiresAt: input.expires_at });
+    providerId = await sendPlayerInvitation({ to: input.email, playerName: input.player_name, inviterName: name, expiresAt: input.expires_at, invitationId });
     sent = true;
     message = "Invitation email sent. They can open it and accept after signing in.";
   } catch {

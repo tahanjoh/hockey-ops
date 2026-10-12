@@ -23,13 +23,25 @@ export default function SharingPage() {
     let active = true;
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login?next=/sharing"); return; }
+      if (!user) {
+        const rawInvitation = new URLSearchParams(window.location.search).get("invitation");
+        const validInvitation = rawInvitation && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawInvitation);
+        router.replace(validInvitation ? `/invite?invitation=${encodeURIComponent(rawInvitation)}` : "/invite");
+        return;
+      }
       const { data, error } = await supabase.rpc("hockey_sharing_context");
       if (!active) return;
       if (error) {
         setMessage("Sharing is unavailable. Apply the player sharing migration, then refresh this page.");
       } else {
         const next = data as Context;
+        const selectedInvitation = new URLSearchParams(window.location.search).get("invitation");
+        if (selectedInvitation) {
+          next.incoming = [...next.incoming].sort((a, b) => Number(b.id === selectedInvitation) - Number(a.id === selectedInvitation));
+          if (!next.incoming.some(invite => invite.id === selectedInvitation)) {
+            setMessage(`Signed in as ${user.email ?? "your account"}. This invitation may already be accepted, expired, or addressed to another email. View Players for accepted access, or switch accounts from the Players page.`);
+          }
+        }
         setContext(next);
         const requested = new URLSearchParams(window.location.search).get("player");
         setPlayerId(next.players.find(p => p.id === requested)?.id ?? next.players[0]?.id ?? "");

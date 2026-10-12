@@ -1,6 +1,6 @@
 import "server-only";
 
-type EmailInput = { to: string; playerName: string; inviterName: string; expiresAt: string };
+type EmailInput = { to: string; playerName: string; inviterName: string; expiresAt: string; invitationId: string };
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]!));
 }
@@ -13,11 +13,14 @@ export function invitationEmailSettings() {
     throw new Error("Invalid invitation site URL.");
   }
   if (site.username || site.password) throw new Error("Invalid invitation site URL.");
-  return { apiKey, sender, url: new URL("/sharing", site.origin).toString() };
+  return { apiKey, sender, url: new URL("/invite", site.origin).toString() };
 }
 
 export async function sendPlayerInvitation(input: EmailInput): Promise<string | null> {
-  const { apiKey, sender, url } = invitationEmailSettings();
+  const { apiKey, sender, url: baseUrl } = invitationEmailSettings();
+  const invitationLink = new URL(baseUrl);
+  invitationLink.searchParams.set("invitation", input.invitationId);
+  const url = invitationLink.toString();
   const player = input.playerName.replace(/[\r\n]/g, " ").slice(0, 160);
   const inviter = input.inviterName.replace(/[\r\n]/g, " ").slice(0, 100);
   const expires = new Date(input.expiresAt).toLocaleDateString("en-US", { timeZone: "America/New_York" });
