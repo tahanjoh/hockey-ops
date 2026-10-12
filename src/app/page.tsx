@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import AccountControls from "@/components/auth/AccountControls";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
@@ -33,6 +34,8 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-md px-6 py-8">
+      <AccountControls email={user.email ?? null} />
+
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
           JudcoTech
