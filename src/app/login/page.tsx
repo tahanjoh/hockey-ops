@@ -55,7 +55,8 @@ function SignInPage() {
       return;
     }
 
-    router.push("/");
+    const invitationDestination = new URLSearchParams(window.location.search).get("next") === "/sharing" ? "/sharing" : "/";
+    router.push(invitationDestination);
     router.refresh();
   }
 
@@ -73,7 +74,7 @@ function SignInPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}${new URLSearchParams(window.location.search).get("next") === "/sharing" ? "/sharing" : "/"}`,
       },
     });
 
