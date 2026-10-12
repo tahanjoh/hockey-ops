@@ -1,11 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const query = new URLSearchParams(window.location.search);
+      if (hash.get("type") === "recovery" || query.get("type") === "recovery") {
+        // Route before the sign-in client initializes, keeping the recovery
+        // credentials available to the reset page. Never log these values.
+        window.location.replace(`/reset-password${window.location.search}${window.location.hash}`);
+        return;
+      }
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!ready) {
+    return <main className="mx-auto flex min-h-screen max-w-md items-center px-6"><p role="status">Opening account…</p></main>;
+  }
+  return <SignInPage />;
+}
+
+function SignInPage() {
   const supabase = createClient();
   const router = useRouter();
 

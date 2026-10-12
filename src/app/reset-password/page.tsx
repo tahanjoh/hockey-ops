@@ -33,9 +33,36 @@ export default function ResetPasswordPage() {
     setMessage("Updating password...");
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      // Recovery emails can return tokens in the URL fragment, while
+      // this app normally uses PKCE. Explicitly establish that session.
+      const recoveryHash = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = recoveryHash.get("access_token");
+      const refreshToken = recoveryHash.get("refresh_token");
+      if (recoveryHash.get("type") === "recovery" && accessToken && refreshToken) {
+        const { error: recoveryError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (recoveryError) {
+          setMessage("Unable to open this recovery session. Request a fresh reset link from this app.");
+          setLoading(false);
+          return;
+        }
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+
+      let { data: { session } } = await supabase.auth.getSession();
+      const recoveryCode = new URLSearchParams(window.location.search).get("code");
+      if (!session && recoveryCode) {
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode);
+        if (exchangeError) {
+          setMessage("Open a fresh reset link in the same browser that requested it.");
+          setLoading(false);
+          return;
+        }
+        session = data.session;
+        window.history.replaceState(null, "", window.location.pathname);
+      }
 
       if (!session) {
         setMessage(
