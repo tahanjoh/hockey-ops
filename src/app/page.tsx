@@ -43,6 +43,8 @@ export default async function HomePage() {
         </h1>
       </div>
 
+      <Link href="/sharing" className="mt-6 inline-block rounded-xl border px-4 py-3 text-sm font-semibold">Share Player / Invitations</Link>
+
       <section className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">
