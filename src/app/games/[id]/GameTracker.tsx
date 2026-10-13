@@ -149,81 +149,6 @@ export default function GameTracker({
     void flushQueue();
   }
 
-  const [wakeLockStatus, setWakeLockStatus] = useState<
-    "active" | "inactive" | "unsupported"
-  >("inactive");
-
-  async function activateScreenAwake() {
-    if (!("wakeLock" in navigator)) {
-      setWakeLockStatus("unsupported");
-      return;
-    }
-
-    try {
-      await navigator.wakeLock.request("screen");
-      setWakeLockStatus("active");
-    } catch {
-      setWakeLockStatus("inactive");
-    }
-  }
-
-
-  useEffect(() => {
-    let wakeLock: WakeLockSentinel | null = null;
-    let cancelled = false;
-
-    async function requestWakeLock() {
-      if (!("wakeLock" in navigator)) {
-        setWakeLockStatus("unsupported");
-        return;
-      }
-
-      try {
-        const lock = await navigator.wakeLock.request("screen");
-
-        if (cancelled) {
-          await lock.release();
-          return;
-        }
-
-        wakeLock = lock;
-        setWakeLockStatus("active");
-
-        lock.addEventListener("release", () => {
-          setWakeLockStatus("inactive");
-        });
-      } catch {
-        setWakeLockStatus("inactive");
-      }
-    }
-
-    void requestWakeLock();
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        void requestWakeLock();
-      }
-    }
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
-
-    return () => {
-      cancelled = true;
-
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
-      );
-
-      if (wakeLock) {
-        void wakeLock.release();
-      }
-    };
-  }, []);
-
   const [isShiftPending, startShiftTransition] =
     useTransition();
 
@@ -361,10 +286,10 @@ export default function GameTracker({
   ) {
     const impactClass =
       impact === "positive"
-        ? "border-green-600 bg-green-50 text-green-800"
+        ? "border-emerald-700 bg-emerald-950/80 text-emerald-200 active:bg-emerald-800"
         : impact === "negative"
-          ? "border-red-500 bg-red-50 text-red-700"
-          : "border-gray-300 bg-white text-gray-900";
+          ? "border-rose-800 bg-rose-950/70 text-rose-200 active:bg-rose-800"
+          : "border-slate-600 bg-slate-800 text-slate-100 active:bg-slate-700";
 
     return (
       <form onSubmit={(event) => {
@@ -384,7 +309,7 @@ export default function GameTracker({
         />
 
         <button type="submit" disabled={pendingTypes.includes(eventType)} aria-busy={pendingTypes.includes(eventType)}
-          className={`min-h-14 w-full rounded-xl border-2 px-2 py-2 text-sm font-bold disabled:opacity-70 ${impactClass}`}>
+          className={`min-h-14 w-full rounded-xl border px-2 py-2 text-sm font-bold transition-colors disabled:opacity-70 ${impactClass}`}>
           {pendingTypes.includes(eventType) ? <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />Saving…</span> : label}
         </button>
       </form>
@@ -392,53 +317,19 @@ export default function GameTracker({
   }
 
   return (
-    <>
-      {/* Screen Awake */}
-      <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl border bg-gray-50 p-4">
-        <div>
-          <div className="text-sm font-bold">
-            Keep Screen Awake
-          </div>
-
-          <div className="mt-1 text-xs text-gray-600">
-            {wakeLockStatus === "active"
-              ? "Screen will stay on while tracking."
-              : wakeLockStatus === "unsupported"
-                ? "Not supported on this device."
-                : "Screen awake is not active."}
-          </div>
-        </div>
-
-        {wakeLockStatus === "active" ? (
-          <span className="rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-800">
-            ON
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={activateScreenAwake}
-            disabled={wakeLockStatus === "unsupported"}
-            className="min-h-11 rounded-xl bg-black px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-          >
-            {wakeLockStatus === "unsupported"
-              ? "Unavailable"
-              : "Activate"}
-          </button>
-        )}
-      </section>
-
+    <div className="mt-4 rounded-2xl bg-[#09182d] p-3 text-slate-100 shadow-xl ring-1 ring-slate-700/60">
       {(pendingCount > 0 || saveStatus) && (
-        <div role="status" className="mt-2 px-1 text-xs text-gray-600">
+        <div role="status" className="mt-2 px-1 text-xs text-slate-300">
           {pendingCount ? `${pendingCount} activity ${pendingCount === 1 ? "entry" : "entries"} waiting to save. ` : ""}{saveStatus}
-          {pendingCount > 0 && <button type="button" onClick={() => void flushQueue()} className="ml-2 font-bold text-blue-700">Retry</button>}
+          {pendingCount > 0 && <button type="button" onClick={() => void flushQueue()} className="ml-2 font-bold text-sky-300">Retry</button>}
         </div>
       )}
 
       {/* Time on Ice */}
-      <section className="mt-4 rounded-2xl border bg-gray-50 p-4">
+      <section className="mt-2 rounded-xl border border-slate-700 bg-[#162943] p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-gray-500">
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
               Time on Ice
             </div>
 
@@ -450,7 +341,7 @@ export default function GameTracker({
             </div>
 
             {isOnIce && (
-              <div className="mt-1 text-xs font-semibold text-green-700">
+              <div className="mt-1 text-xs font-semibold text-emerald-300">
                 Current shift {formatTime(currentShiftSeconds)}
               </div>
             )}
@@ -474,7 +365,7 @@ export default function GameTracker({
             <button
               type="submit"
               disabled={isShiftPending}
-              className="w-full rounded-xl bg-slate-700 px-4 py-3 font-semibold text-white disabled:opacity-50"
+              className="w-full rounded-xl bg-slate-600 px-3 py-3 text-xs font-semibold text-white disabled:opacity-50"
             >
               {isShiftPending
                 ? "UPDATING CLOCK..."
@@ -503,7 +394,7 @@ export default function GameTracker({
             <button
               type="submit"
               disabled={isShiftPending}
-              className="min-h-14 rounded-xl border-2 border-red-500 bg-red-50 px-5 py-2 font-bold text-red-700 disabled:opacity-50"
+              className="min-h-14 rounded-xl border border-rose-600 bg-rose-950 px-4 py-2 font-bold text-rose-200 disabled:opacity-50"
             >
               {isShiftPending ? "STOPPING..." : "OFF ICE"}
             </button>
@@ -525,7 +416,7 @@ export default function GameTracker({
             <button
               type="submit"
               disabled={isShiftPending}
-              className="min-h-14 rounded-xl border-2 border-green-600 bg-green-50 px-5 py-2 font-bold text-green-800 disabled:opacity-50"
+              className="min-h-14 rounded-xl border border-emerald-600 bg-emerald-950 px-4 py-2 font-bold text-emerald-200 disabled:opacity-50"
             >
               {isShiftPending ? "STARTING..." : "ON ICE"}
             </button>
@@ -544,8 +435,8 @@ export default function GameTracker({
               onClick={() => selectPeriod(item.value)}
               className={`rounded-xl border px-2 py-2.5 text-sm font-bold ${
                 period === item.value
-                  ? "bg-black text-white"
-                  : ""
+                  ? "border-sky-200 bg-sky-100 text-slate-950"
+                  : "border-slate-600 bg-slate-800 text-slate-200"
               }`}
             >
               {item.label}
@@ -554,171 +445,50 @@ export default function GameTracker({
         </div>
       </section>
 
-      {/* Scoring */}
+      {/* Scoring contributions and goals against */}
       <section className="mt-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-          Scoring
-        </h2>
-
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-300">Scoring</h2>
         <div className="grid grid-cols-2 gap-2">
-          {eventButton(
-            "Scored Goal",
-            "goal",
-            "positive",
-          )}
-
-          {eventButton(
-            "Got Assist",
-            "assist",
-            "positive",
-          )}
-
-          {eventButton(
-            "SOG",
-            "sog",
-            "positive",
-          )}
-
-          {eventButton(
-            "Missed Shot",
-            "missed_shot",
-            "neutral",
-          )}
-
-          {eventButton(
-            "Line Goal",
-            "goal_for",
-            "positive",
-          )}
-
-          {eventButton(
-            "Goal Against",
-            "goal_against",
-            "negative",
-          )}
+          {eventButton("Scored Goal", "goal", "positive")}
+          {eventButton("On Ice — GA", "goal_against", "negative")}
+          {eventButton("Got Assist", "assist", "positive")}
+          {eventButton("Responsible — GA", "goal_against_responsible", "negative")}
+          {eventButton("Line Goal", "goal_for", "positive")}
+          <div aria-hidden="true" />
         </div>
       </section>
 
-      {/* On-Ice Impact */}
+      {/* Shot accuracy and positive offensive contributions */}
       <section className="mt-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-          On-Ice Impact
-        </h2>
-
-        {position === "forward" ? (
-          <div className="grid grid-cols-2 gap-2">
-            {eventButton(
-              "Pass",
-              "pass",
-              "positive",
-            )}
-
-            {eventButton(
-              "Icing",
-              "icing",
-              "negative",
-            )}
-
-            {eventButton(
-              "Break Away",
-              "breakaway",
-              "positive",
-            )}
-
-            {eventButton(
-              "Turnover",
-              "turnover",
-              "negative",
-            )}
-
-            {eventButton(
-              "Body Check",
-              "body_check",
-              "positive",
-            )}
-
-            {eventButton(
-              "Penalty",
-              "penalty",
-              "negative",
-            )}
-
-            {eventButton(
-              "Blocked Shot",
-              "blocked_shot",
-              "positive",
-            )}
-
-            {eventButton(
-              "Off Sides",
-              "offside",
-              "negative",
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {eventButton(
-              "Pass",
-              "pass",
-              "positive",
-            )}
-
-            {eventButton(
-              "Icing",
-              "icing",
-              "negative",
-            )}
-
-            {eventButton(
-              "Takeaway",
-              "takeaway",
-              "positive",
-            )}
-
-            {eventButton(
-              "Turnover",
-              "turnover",
-              "negative",
-            )}
-
-            {eventButton(
-              "Blocked Shot",
-              "blocked_shot",
-              "positive",
-            )}
-
-            {eventButton(
-              "Body Check",
-              "body_check",
-              "positive",
-            )}
-
-            {eventButton(
-              "Burned",
-              "burned",
-              "negative",
-            )}
-
-            {eventButton(
-              "Penalty",
-              "penalty",
-              "negative",
-            )}
-          </div>
-        )}
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-300">Offensive Activity & Shot Accuracy</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {eventButton("SOG", "sog", "positive")}
+          {eventButton("Missed Shot", "missed_shot", "neutral")}
+          {eventButton("Pass", "pass", "positive")}
+          {position === "forward" ? eventButton("Break Away", "breakaway", "positive") : <div aria-hidden="true" />}
+        </div>
       </section>
 
-      {/* Observations */}
       <section className="mt-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-          Observations
-        </h2>
-
-        <GameNoteButtons
-          recordEvent={recordEvent}
-          period={period}
-        />
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-300">On-Ice Impact</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {eventButton("Takeaway", "takeaway", "positive")}
+          {eventButton("Turnover", "turnover", "negative")}
+          {eventButton("Good Forecheck", "good_forecheck", "positive")}
+          {eventButton("Penalty", "penalty", "negative")}
+          {eventButton("Good Backcheck", "good_backcheck", "positive")}
+          {eventButton("Icing", "icing", "negative")}
+          {eventButton("Blocked Shot", "blocked_shot", "positive")}
+          {eventButton("Off Sides", "offside", "negative")}
+          {eventButton("Body Check", "body_check", "positive")}
+          {position === "defense" ? eventButton("Burned", "burned", "negative") : <div aria-hidden="true" />}
+        </div>
       </section>
-    </>
+
+      <section className="mt-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-300">Observations</h2>
+        <GameNoteButtons recordEvent={recordEvent} period={period} />
+      </section>
+    </div>
   );
 }

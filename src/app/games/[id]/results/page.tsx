@@ -159,6 +159,7 @@ export default async function GameResultsPage({
   } = calculateGameImpact(
     game.position as "forward" | "defense",
     events ?? [],
+    { team_score: game.team_score, opponent_score: game.opponent_score },
   );
 
   const displayedGameImpact =

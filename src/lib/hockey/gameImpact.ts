@@ -5,6 +5,7 @@ export type HockeyEvent = {
 export function calculateGameImpact(
   position: "forward" | "defense",
   events: HockeyEvent[],
+  score?: { team_score: number | null; opponent_score: number | null },
 ) {
   const count = (type: string) =>
     events.filter(
@@ -20,7 +21,7 @@ export function calculateGameImpact(
           sog: 0.2,
 
           goal_for: 0.8,
-          goal_against: -0.9,
+          goal_against: 0,
 
           pass: 0.05,
           breakaway: 0,
@@ -51,7 +52,7 @@ export function calculateGameImpact(
           sog: 0.2,
 
           goal_for: 0.7,
-          goal_against: -0.7,
+          goal_against: 0,
 
           pass: 0.05,
           breakaway: 0.3,
@@ -77,6 +78,17 @@ export function calculateGameImpact(
         };
 
   const goals = count("goal");
+  // Final-score adjustment is deliberately modest: without the full goal sequence
+  // we cannot reliably identify the actual deciding goal or assign causation.
+  const team = score?.team_score;
+  const opponent = score?.opponent_score;
+  const knownScore = typeof team === "number" && typeof opponent === "number";
+  const margin = knownScore ? Math.abs(team - opponent) : 0;
+  const closeness = knownScore ? (margin <= 1 ? 1.5 : margin <= 3 ? 1.15 : 0.8) : 1;
+  const scoringVolume = knownScore ? Math.max(0.7, Math.min(1.2, 3 / Math.max(1, team))) : 1;
+  const scoringMultiplier = Math.max(0.65, Math.min(1.8, closeness * scoringVolume));
+  const responsibleMultiplier = knownScore && team < opponent && margin <= 1 ? 1.6 : knownScore && margin >= 5 ? 0.7 : 1;
+
 
   const shotAttempts =
     count("missed_shot") +
@@ -99,8 +111,8 @@ export function calculateGameImpact(
    * individual events.
    */
   const offensiveImpact =
-    goals * weights.goal +
-    count("assist") * weights.assist +
+    goals * weights.goal * scoringMultiplier +
+    count("assist") * weights.assist * scoringMultiplier +
     shotAttempts * weights.shot +
     shotsOnGoal * weights.sog +
     count("breakaway") * weights.breakaway +
@@ -115,8 +127,7 @@ export function calculateGameImpact(
    */
   const onIceImpact =
     goalsFor * weights.goal_for +
-    count("goal_against") *
-      weights.goal_against +
+    Math.max(0, count("goal_against") - count("goal_against_responsible")) * (-0.4) +
     count("pass") * weights.pass +
     count("body_check") *
       weights.body_check +
@@ -157,8 +168,10 @@ export function calculateGameImpact(
     count("blocked_shot") * weights.block +
     count("one_on_one_stop") *
       weights.one_on_one_stop +
-    count("burned") *
-      weights.one_on_one_beaten;
+    count("burned") * weights.one_on_one_beaten +
+    count("good_forecheck") * 0.2 +
+    count("good_backcheck") * 0.2 -
+    count("goal_against_responsible") * 1.2 * responsibleMultiplier;
 
   const rawImpact =
     offensiveImpact +

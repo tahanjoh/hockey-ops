@@ -14,13 +14,16 @@ export function summarizeGames(games: SummaryGame[]) {
   return {
     games: games.length, goals, assists, points: goals + assists, shots, sog,
     shooting: sog ? goals / sog * 100 : null,
-    averageImpact: games.length ? games.reduce((sum, game) => sum + calculateGameImpact(game.position === "defense" ? "defense" : "forward", game.game_events ?? []).gameImpact, 0) / games.length : null,
+    averageImpact: games.length ? games.reduce((sum, game) => sum + calculateGameImpact(game.position === "defense" ? "defense" : "forward", game.game_events ?? [], { team_score: game.team_score, opponent_score: game.opponent_score }).gameImpact, 0) / games.length : null,
     wins: scoredGames.filter(game => game.team_score! > game.opponent_score!).length,
     losses: scoredGames.filter(game => game.team_score! < game.opponent_score!).length,
     ties: scoredGames.filter(game => game.team_score === game.opponent_score).length,
     details: [
       ["On-ice goals for", count("goal_for", "goal", "assist")],
       ["On-ice goals against", count("goal_against")],
+      ["Responsible for goals against", count("goal_against_responsible")],
+      ["Good forechecks", count("good_forecheck")],
+      ["Good backchecks", count("good_backcheck")],
       ["On-ice differential", count("goal_for", "goal", "assist") - count("goal_against")],
       ["Takeaways", count("takeaway")], ["Turnovers", count("turnover")],
       ["Blocked shots", count("block", "blocked_shot")], ["Passes", count("pass")],

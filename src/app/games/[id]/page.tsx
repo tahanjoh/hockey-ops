@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import GameTracker from "./GameTracker";
+import ScreenAwakeControl from "./ScreenAwakeControl";
 import EndGameDialog from "./EndGameDialog";
 import ActivityClock from "./ActivityClock";
 import ActivityVideo from "./ActivityVideo";
@@ -113,6 +114,9 @@ export default async function GamePage({ params }: PageProps) {
       "sog",
       "goal_for",
       "goal_against",
+      "goal_against_responsible",
+      "good_forecheck",
+      "good_backcheck",
       "pass",
       "icing",
       "breakaway",
@@ -468,7 +472,10 @@ export default async function GamePage({ params }: PageProps) {
       sog: "SOG",
 
       goal_for: "Line Goal",
-      goal_against: "Goal Against",
+      goal_against: "On Ice — GA",
+      goal_against_responsible: "Responsible — GA",
+      good_forecheck: "Good Forecheck",
+      good_backcheck: "Good Backcheck",
 
       pass: "Pass",
       icing: "Icing",
@@ -509,11 +516,11 @@ export default async function GamePage({ params }: PageProps) {
       .reverse() ?? [];
 
   return (
-    <main className="mx-auto min-h-screen max-w-md px-4 py-5">
-      <header className="sticky top-0 z-10 -mx-4 border-b bg-white px-4 pb-4">
+    <main className="mx-auto min-h-screen max-w-md bg-[#071427] px-4 py-5 text-slate-100">
+      <header className="sticky top-0 z-10 -mx-4 border-b border-slate-700 bg-[#09182d] px-4 pb-4 pt-3 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-300">
               Live Game
             </p>
 
@@ -522,39 +529,40 @@ export default async function GamePage({ params }: PageProps) {
               {player?.last_name ? ` ${player.last_name}` : ""}
             </h1>
 
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-slate-300">
               vs {game.opponent} ·{" "}
               {game.position === "forward" ? "Forward" : "Defense"}
             </p>
           </div>
 
-          <div className="text-right text-xs text-gray-500">
+          <div className="text-right text-xs text-slate-400">
             <div>{game.game_date}</div>
             <div className="capitalize">
               {game.home_away}
             </div>
+            <ScreenAwakeControl />
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-          <div className="rounded-xl bg-gray-100 px-2 py-2">
+          <div className="rounded-xl bg-[#1b2d47] px-2 py-2">
             <div className="text-lg font-bold">{count("goal")}</div>
-            <div className="text-[11px] text-gray-500">G</div>
+            <div className="text-[11px] text-slate-400">G</div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-2">
+          <div className="rounded-xl bg-[#1b2d47] px-2 py-2">
             <div className="text-lg font-bold">{count("assist")}</div>
-            <div className="text-[11px] text-gray-500">A</div>
+            <div className="text-[11px] text-slate-400">A</div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-2">
+          <div className="rounded-xl bg-[#1b2d47] px-2 py-2">
             <div className="text-lg font-bold">{shotAttempts}</div>
-            <div className="text-[11px] text-gray-500">Attempts</div>
+            <div className="text-[11px] text-slate-400">Attempts</div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-2">
+          <div className="rounded-xl bg-[#1b2d47] px-2 py-2">
             <div className="text-lg font-bold">{shotsOnGoal}</div>
-            <div className="text-[11px] text-gray-500">SOG</div>
+            <div className="text-[11px] text-slate-400">SOG</div>
           </div>
         </div>
       </header>
@@ -570,9 +578,11 @@ export default async function GamePage({ params }: PageProps) {
         savedEventIds={(events ?? []).map((event) => event.client_event_id).filter((id): id is string => Boolean(id))}
       />
 
-      <section className="mt-8">
+      <details className="mt-8 rounded-2xl border border-slate-700 bg-[#102139] p-3 text-slate-100">
+        <summary className="cursor-pointer select-none text-sm font-bold uppercase tracking-wide text-sky-200">View Game Stats</summary>
+        <section className="mt-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-300">
             Game Performance
           </h2>
 
@@ -582,56 +592,56 @@ export default async function GamePage({ params }: PageProps) {
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {formatDifferential(onIceDifferential)}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               On Ice +/-
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {count("pass")}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               Passes
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {count("body_check")}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               Body Checks
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {count("blocked_shot")}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               Blocked Shots
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {count("turnover")}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               Turnovers
             </div>
           </div>
 
-          <div className="rounded-xl bg-gray-100 px-2 py-3 text-center">
+          <div className="rounded-xl bg-[#1c304a] px-2 py-3 text-center">
             <div className="text-lg font-bold">
               {count("penalty")}
             </div>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-slate-400">
               Penalties
             </div>
           </div>
@@ -643,7 +653,7 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("breakaway")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Break Aways
               </div>
             </div>
@@ -652,7 +662,7 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("offside")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Off Sides
               </div>
             </div>
@@ -661,7 +671,7 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("icing")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Icings
               </div>
             </div>
@@ -674,7 +684,7 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("takeaway")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Takeaways
               </div>
             </div>
@@ -683,7 +693,7 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("burned")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Burned
               </div>
             </div>
@@ -692,12 +702,14 @@ export default async function GamePage({ params }: PageProps) {
               <div className="text-lg font-bold">
                 {count("icing")}
               </div>
-              <div className="text-[11px] text-gray-500">
+              <div className="text-[11px] text-slate-400">
                 Icings
               </div>
             </div>
           </div>
         )}
+        </section>
+      </details>
 
       <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
         Recent Activity
@@ -746,8 +758,6 @@ export default async function GamePage({ params }: PageProps) {
         </form>
       </section>
 
-      </section>
-
       {events?.some((event) =>
         [
           "positive_note",
@@ -786,7 +796,7 @@ export default async function GamePage({ params }: PageProps) {
                       {label}
                     </div>
 
-                    <div className="mt-1 text-sm text-gray-600">
+                    <div className="mt-1 text-sm text-slate-300">
                       {event.note_text || "No details added"}
                     </div>
                     <ActivityVideo initialUrl={event.video_url} saveVideo={updateActivityVideo.bind(null, gameId, event.id)} />
