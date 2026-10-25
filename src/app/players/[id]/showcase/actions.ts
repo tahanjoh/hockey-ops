@@ -1,5 +1,6 @@
 'use server';
 import { createClient } from '@/lib/supabase/server';
+import { parseShowcaseMedia } from '@/lib/hockey/showcaseMedia';
 import { buildShowcase } from '@/lib/hockey/showcase';
 import type { SummaryGame } from '@/lib/hockey/playerSummary';
 export async function saveShowcase(form: FormData): Promise<{error?: string; token?: string; disabled?: boolean}> {
@@ -15,6 +16,8 @@ export async function saveShowcase(form: FormData): Promise<{error?: string; tok
    const {data:token,error} = await db.rpc('hockey_showcase_manage',{p_player:id,p_action:action});
    return error ? {error:error.message} : action === 'disable' ? {disabled:true} : {token:token as string};
   }
+  let media;
+  try { media = parseShowcaseMedia(JSON.parse(String(form.get('images') ?? '[]')),JSON.parse(String(form.get('leagues') ?? '[]'))); } catch(error) { return {error:error instanceof Error?error.message:'Invalid photos or leagues.'}; }
   const ids = form.getAll('game').map(String).slice(0,200);
   if (!ids.length) return {error:'Select at least one completed game.'};
   const [{data:player,error:pe},{data:games,error:ge}] = await Promise.all([
@@ -23,7 +26,7 @@ export async function saveShowcase(form: FormData): Promise<{error?: string; tok
   ]);
   if (pe || ge || !player || games?.length !== ids.length) return {error:'Unable to load selected games. Refresh and try again.'};
   const field = (key:string,max:number) => String(form.get(key) ?? '').trim().slice(0,max);
-  const snapshot = buildShowcase(`${player.first_name} ${player.last_name}`, games as SummaryGame[],new Set(form.getAll('clip').map(String)),{team:field('team',80),jersey:field('jersey',8),position:field('position',40),graduation:field('graduation',4),bio:field('bio',500)});
+  const snapshot = buildShowcase(`${player.first_name} ${player.last_name}`, games as SummaryGame[],new Set(form.getAll('clip').map(String)),{...media,team:field('team',80),jersey:field('jersey',8),position:field('position',40),graduation:field('graduation',4),bio:field('bio',500)});
   const {data:token,error} = await db.rpc('hockey_showcase_manage',{p_player:id,p_action:'publish',p_snapshot:snapshot});
   return error ? {error:error.message} : {token:token as string};
  } catch { return {error:'Unable to save. Please try again.'}; }
