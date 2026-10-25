@@ -39,7 +39,7 @@ export default async function PlayerSummaryPage({ params, searchParams }: {
     <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">Player Summary</p>
     <h1 className="mt-1 text-3xl font-bold">{player.first_name} {player.last_name}</h1>
     <p className="mt-2 text-sm text-gray-500">Collective stats and videos from completed games.</p>
-    <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold underline"><Link href={`/players/${id}/games`}>Game History</Link><Link href={`/games/new?player=${id}`}>Start Game</Link></div>
+    <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold underline"><Link href={`/players/${id}/showcase`}>Player Showcase ↗</Link><Link href={`/players/${id}/games`}>Game History</Link><Link href={`/games/new?player=${id}`}>Start Game</Link></div>
     <form className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border p-4">
       <label className="text-sm font-semibold">From<input type="date" name="from" defaultValue={from} className="mt-1 block rounded-lg border p-2" /></label>
       <label className="text-sm font-semibold">Through<input type="date" name="to" defaultValue={to} className="mt-1 block rounded-lg border p-2" /></label>

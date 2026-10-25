@@ -1,0 +1,18 @@
+'use client';
+import {useState} from 'react';
+import {saveShowcase} from './actions';
+type Game={id:string;opponent:string;date:string;clips:{key:string;label:string;title:string}[]};
+export default function Editor({id,token,games}:{id:string;token:string|null;games:Game[]}) {
+ const [link,setLink]=useState(token ? `/showcase/${token}` : ''); const [message,setMessage]=useState(''); const [busy,setBusy]=useState(false);
+ const [selected,setSelected]=useState<string[]>([]);
+ return <form className="space-y-5" action={async form=>{setBusy(true);setMessage('');try{const result=await saveShowcase(form);if(result.error)setMessage(result.error);else if(result.disabled){setLink('');setMessage('Sharing disabled.');}else{setLink(`/showcase/${result.token}`);setMessage('Link created. Previous links no longer work.');}}catch{setMessage('Unable to save. Try again.');}finally{setBusy(false);}}}>
+ <input type="hidden" name="player" value={id}/>
+ {link&&<div className="rounded-xl bg-sky-50 p-4"><a className="break-all font-bold underline" href={link} target="_blank" rel="noopener noreferrer">Open current showcase ↗</a><button type="button" className="ml-4 underline" onClick={async()=>{try{await navigator.clipboard.writeText(new URL(link,window.location.origin).href);setMessage('Link copied. Anyone with this link can view the showcase.');}catch{setMessage('Open the showcase and copy its address.');}}}>Copy link</button></div>}
+ <p className="text-sm text-gray-600">Anyone with the link can view or forward this showcase. Each publish creates a new link and replaces the previous showcase. Start by selecting games and clips below. This editor starts fresh each time.</p>
+ <div className="grid grid-cols-2 gap-3">{[['team','Team'],['jersey','Jersey number'],['position','Position'],['graduation','Graduation year']].map(([name,label])=><label key={name} className="text-sm font-semibold">{label}<input name={name} maxLength={name==='team'?80:name==='position'?40:name==='graduation'?4:8} className="mt-1 w-full rounded-lg border p-3"/></label>)}</div>
+ <label className="block font-semibold">Player introduction<textarea name="bio" maxLength={500} className="mt-1 w-full rounded-lg border p-3" placeholder="What makes this player stand out?"/></label>
+ <fieldset><legend className="text-xl font-bold">Games and highlights</legend><p className="mb-3 text-sm text-gray-600">Stats include only selected games. Check individual videos to share them. Notes and evaluations stay private.</p>{!games.length&&<p>No completed games yet.</p>}{games.map(game=><div key={game.id} className="mb-3 rounded-xl border p-4"><label className="font-bold"><input type="checkbox" name="game" value={game.id} checked={selected.includes(game.id)} onChange={e=>setSelected(e.target.checked?[...selected,game.id]:selected.filter(x=>x!==game.id))}/> {game.date} · vs {game.opponent}</label><div className="mt-2 space-y-2 pl-4">{game.clips.map(clip=><label key={clip.key} className="block text-sm"><input type="checkbox" name="clip" value={clip.key} disabled={!selected.includes(game.id)}/> <span className="capitalize">{clip.label}</span> · {clip.title}</label>)}</div></div>)}</fieldset>
+
+ <div className="flex gap-3"><button disabled={busy} name="action" value="publish" className="rounded-xl bg-sky-800 px-5 py-3 font-bold text-white">{busy?'Saving…':'Publish showcase'}</button><button disabled={busy||!link} name="action" value="rotate" formNoValidate className="rounded-xl border px-4 py-3">Replace link</button><button disabled={busy||!link} name="action" value="disable" formNoValidate className="rounded-xl border px-4 py-3">Disable sharing</button></div><p role="status">{message}</p>
+ </form>;
+}

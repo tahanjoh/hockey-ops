@@ -1,0 +1,20 @@
+const ts = require('typescript');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const Module = require('node:module');
+const path = require('node:path');
+const cache = new Map();
+function load(file) {file=path.resolve(file);if(cache.has(file))return cache.get(file);const mod=new Module(file,module);mod.filename=file;mod.paths=module.paths;mod.require=(id)=>id.startsWith('.')?load(path.resolve(path.dirname(file),id)+'.ts'):require(id);mod._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);cache.set(file,mod.exports);return mod.exports;}
+const {buildShowcase,showcaseClips}=load('src/lib/hockey/showcase.ts');
+const game={id:'a',opponent:'Sabres',game_date:'2026-10-25',position:'forward',team_score:2,opponent_score:1,video_url:'javascript:alert(1)',game_events:[{event_type:'goal',note_text:'PRIVATE',video_url:'https://example.com/goal'},{event_type:'assist'},{event_type:'sog'},{event_type:'turnover',note_text:'PRIVATE',video_url:'https://example.com/private'}]};
+const clips=showcaseClips(game);
+const result=buildShowcase('Taylor',[game],new Set([clips[0].key]),{team:'Team',jersey:'10',position:'Forward',graduation:'2030',bio:'Hello'});
+assert.deepEqual(result.games[0],{opponent:'Sabres',date:'2026-10-25',goals:1,assists:1,sog:2});
+assert.equal(result.clips.length,1);
+assert.equal(result.clips[0].url,'https://example.com/goal');
+assert(!JSON.stringify(result).includes('PRIVATE'));
+assert(!JSON.stringify(result).includes('turnover'));
+assert(!JSON.stringify(result).includes('javascript:'));
+assert(!JSON.stringify(result).includes('/private'));
+assert.equal(buildShowcase('Taylor',[],new Set(),{team:'',jersey:'',position:'',graduation:'',bio:''}).games.length,0);
+console.log('PASS: selected clips, positive stats, goal counts as SOG, unsafe URL filtering, private data exclusion, empty selection.');
