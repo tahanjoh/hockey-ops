@@ -11,7 +11,13 @@ export default async function Page({ params }: { params: Promise<{ code: string 
   if (!/^(?:[0-9]{6}|[0-9a-f]{12})$/i.test(code)) notFound();
   const db = await createClient();
   const { data, error } = await db.rpc('hockey_showcase_short_read', { p_code: code.toUpperCase() });
-  if (error) throw new Error('Unable to load this showcase. Please try again later.');
+  if (error) {
+      console.error('SHOWCASE_READ_ERROR', {
+        code: error.code,
+        message: error.message
+      });
+      throw new Error('Unable to load this showcase. Please try again later.');
+    }
   if (!data) notFound();
   return <Viewer data={data as Showcase} basePath={`/s/${code.toUpperCase()}`} />;
 }

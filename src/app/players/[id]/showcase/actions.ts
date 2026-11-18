@@ -1,10 +1,12 @@
 'use server';
+import { revalidatePath } from 'next/cache';
+import { showcaseTitle } from '@/lib/hockey/savedShowcases';
 import { createClient } from '@/lib/supabase/server';
 import { parseShowcaseMedia } from '@/lib/hockey/showcaseMedia';
 import { parseShowcaseExtras } from '@/lib/hockey/showcaseExtras';
 import { buildShowcase } from '@/lib/hockey/showcase';
 import type { SummaryGame } from '@/lib/hockey/playerSummary';
-export async function saveShowcase(form: FormData): Promise<{error?: string; token?: string; disabled?: boolean}> {
+export async function saveShowcase(form: FormData): Promise<{error?: string; token?: string; disabled?: boolean; publicationId?: string}> {
  try {
   const db = await createClient();
   const {data:{user}} = await db.auth.getUser();
@@ -14,9 +16,13 @@ export async function saveShowcase(form: FormData): Promise<{error?: string; tok
   const {data:parent,error:parentError} = await db.rpc('hockey_is_parent',{p_player:id});
   if (parentError || !parent) return {error:'Only a parent with player access can manage this showcase.'};
   if (action === 'disable' || action === 'rotate') {
-   const {data:token,error} = await db.rpc('hockey_showcase_short_manage',{p_player:id,p_action:action});
-   return error ? {error:error.message} : action === 'disable' ? {disabled:true} : {token:token as string};
+   const {data:publication,error} = await db.rpc('hockey_showcase_publication_manage',{p_player:id,p_action:action,p_publication:String(form.get('publication') ?? '')});
+   if(error) return {error:error.message};
+   revalidatePath(`/players/${id}/showcase`);
+   return action === 'disable' ? {disabled:true,publicationId:publication.id} : {token:publication.code,publicationId:publication.id};
   }
+  let title;
+  try { title = showcaseTitle(form.get('title')); } catch(error) { return {error:error instanceof Error ? error.message : 'Enter a showcase name.'}; }
   let media;
   try { media = parseShowcaseMedia(JSON.parse(String(form.get('images') ?? '[]')),JSON.parse(String(form.get('leagues') ?? '[]'))); } catch(error) { return {error:error instanceof Error?error.message:'Invalid photos or leagues.'}; }
   let extras;
@@ -30,7 +36,9 @@ export async function saveShowcase(form: FormData): Promise<{error?: string; tok
   if (pe || ge || !player || games?.length !== ids.length) return {error:'Unable to load selected games. Refresh and try again.'};
   const field = (key:string,max:number) => String(form.get(key) ?? '').trim().slice(0,max);
   const snapshot = buildShowcase(`${player.first_name} ${player.last_name}`, games as SummaryGame[],new Set(form.getAll('clip').map(String)),{...media,...extras,team:field('team',80),jersey:field('jersey',8),position:field('position',40),graduation:field('graduation',4),bio:field('bio',500)});
-  const {data:token,error} = await db.rpc('hockey_showcase_short_manage',{p_player:id,p_action:'publish',p_snapshot:snapshot});
-  return error ? {error:error.message} : {token:token as string};
+  const {data:publication,error} = await db.rpc('hockey_showcase_publication_manage',{p_player:id,p_action:'publish',p_snapshot:snapshot,p_title:title});
+  if(error) return {error:error.message};
+  revalidatePath(`/players/${id}/showcase`);
+  return {token:publication.code,publicationId:publication.id};
  } catch { return {error:'Unable to save. Please try again.'}; }
 }

@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const ts=require('typescript');
+require.extensions['.ts']=(module,filename)=>module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,filename);
+require.extensions['.tsx']=(module,filename)=>module._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,filename);
+const {showcaseTitle}=require('../src/lib/hockey/savedShowcases.ts');
+assert.equal(showcaseTitle(' Tournament weekend '),'Tournament weekend');
+for(const title of ['', ' '.repeat(5),'x'.repeat(121),null])assert.throws(()=>showcaseTitle(title));
+const Module=require('node:module');const originalRequire=Module.prototype.require;
+Module.prototype.require=function(name){if(name==='./DeleteShowcase')return ()=>null;if(name==='@/lib/hockey/showcaseExtras')return require('../src/lib/hockey/showcaseExtras.ts');return originalRequire.apply(this,arguments);};
+const Saved=require('../src/app/players/[id]/showcase/SavedShowcases.tsx').default;
+Module.prototype.require=originalRequire;
+const React=require('react');const {renderToStaticMarkup}=require('react-dom/server');
+const html=renderToStaticMarkup(React.createElement(Saved,{playerId:'player',selected:'a',items:[{id:'a',title:'Tournament A',code:'123456',enabled:true,created_at:'2026-11-18T12:00:00Z',games:4},{id:'b',title:'Tournament B',code:'654321',enabled:true,created_at:'2026-11-17T12:00:00Z',games:2},{id:'c',title:'Disabled',code:'999999',enabled:false,created_at:'2026-11-16T12:00:00Z',games:1}]}));
+assert(html.includes('Tournament A'));assert(html.includes('Tournament B'));assert(html.includes('/s/123456'));assert(html.includes('/s/654321'));assert(!html.includes('/s/999999'));assert(html.includes('showcase=a'));assert(html.includes('showcase=b'));assert(html.includes('new=1'));assert(html.includes('Sharing disabled'));
+console.log('PASS: named saved-showcase list, distinct public and choose links, new-showcase link, disabled state, and title validation.');
