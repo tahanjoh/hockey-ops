@@ -4,7 +4,7 @@ import { showcaseTitle } from '@/lib/hockey/savedShowcases';
 import { createClient } from '@/lib/supabase/server';
 import { parseShowcaseMedia } from '@/lib/hockey/showcaseMedia';
 import { parseShowcaseExtras } from '@/lib/hockey/showcaseExtras';
-import { buildShowcase } from '@/lib/hockey/showcase';
+import { buildShowcase, refreshShowcaseGameStats } from '@/lib/hockey/showcase';
 import { showcaseClips, type Showcase } from '@/lib/hockey/showcase';
 import type { ShowcaseSelection } from '@/lib/hockey/showcaseEditing';
 import type { SummaryGame } from '@/lib/hockey/playerSummary';
@@ -47,10 +47,17 @@ export async function saveShowcase(form: FormData): Promise<{error?: string; tok
     // Editing a note/profile must not drop archived clips or refresh historical stats.
     snapshot = {name:`${player.first_name} ${player.last_name}`,...profile,updated:new Date().toISOString(),games:original.snapshot.games,clips:original.snapshot.clips};
     selection = original.selection;
+    if(form.get('refresh_stats') === 'true') {
+      let query = db.from('games').select('*,game_events(*),game_shifts(*)').eq('player_id',id).eq('status','completed');
+      if(selection?.games?.length) query = query.in('id',selection.games);
+      const {data:sources,error:refreshError} = await query.order('game_date',{ascending:false});
+      if(refreshError) return {error:'Unable to refresh tracked game stats. Try again or uncheck Refresh tracked stats.'};
+      snapshot = refreshShowcaseGameStats(snapshot,sources ?? []);
+    }
   } else {
     const ids = [...new Set(form.getAll('game').map(String))].slice(0,200);
     if(!ids.length) return {error:'Select at least one completed game.'};
-    const {data:games,error:ge} = await db.from('games').select('*,game_events(*)').eq('player_id',id).eq('status','completed').in('id',ids).order('game_date',{ascending:false});
+    const {data:games,error:ge} = await db.from('games').select('*,game_events(*),game_shifts(*)').eq('player_id',id).eq('status','completed').in('id',ids).order('game_date',{ascending:false});
     if(ge || games?.length !== ids.length) return {error:'Unable to load selected games. Refresh and try again.'};
     const selected = new Set(form.getAll('clip').map(String));
     snapshot = buildShowcase(`${player.first_name} ${player.last_name}`,games as SummaryGame[],selected,profile);
