@@ -1,3 +1,4 @@
+import GameActions from "@/app/games/GameActions";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -38,7 +39,7 @@ export default async function PlayerGamesPage({
     const { data: games, error: gamesError } = await supabase
     .from("games")
     .select(`
-        id,
+        *,
         opponent,
         position,
         game_date,
@@ -74,7 +75,7 @@ export default async function PlayerGamesPage({
         (total, game) =>
         total +
         (game.game_events?.filter(
-            (event) => event.event_type === "goal",
+            (event: { event_type: string }) => event.event_type === "goal",
         ).length ?? 0),
         0,
     ) ?? 0;
@@ -84,13 +85,13 @@ export default async function PlayerGamesPage({
         (total, game) =>
         total +
         (game.game_events?.filter(
-            (event) => event.event_type === "assist",
+            (event: { event_type: string }) => event.event_type === "assist",
         ).length ?? 0),
         0,
     ) ?? 0;
 
     const seasonGameImpacts =
-    games?.map((game) =>
+    games?.filter(game => game.entry_mode !== "manual").map((game) =>
         calculateGameImpact(
         game.position as "forward" | "defense",
         game.game_events ?? [],
@@ -140,7 +141,7 @@ export default async function PlayerGamesPage({
 
         <div className="rounded-2xl bg-gray-100 px-3 py-4">
             <div className="text-2xl font-bold">
-            {averageGameImpact.toFixed(1)}
+            {seasonGameImpacts.length ? averageGameImpact.toFixed(1) : "—"}
             </div>
             <div className="mt-1 text-xs text-gray-500">
             Avg Impact
@@ -173,18 +174,22 @@ export default async function PlayerGamesPage({
           <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">In Progress</h2>
           <div className="space-y-3">
             {activeGames.map((game) => (
-              <Link key={game.id} href={`/games/${game.id}`} className="block rounded-2xl border-2 border-blue-500 bg-blue-50 p-4">
+              <article key={game.id} className="rounded-2xl border-2 border-blue-500 bg-blue-50 p-4">
+              <Link href={`/games/${game.id}`} className="block">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-bold">vs {game.opponent}</span>
                   <span className="text-xs text-gray-600">{game.game_date}</span>
                 </div>
                 <div className="mt-2 font-semibold text-blue-700">Resume Game →</div>
               </Link>
+              <GameActions gameId={game.id} playerId={playerId} opponent={game.opponent} />
+              </article>
             ))}
           </div>
         </section>
       )}
 
+      <Link href={`/games/add?player=${playerId}`} className="mt-6 inline-block rounded-xl border px-4 py-3 font-semibold">+ Add Game</Link>
       <div className="mt-6 space-y-3">
         {!games?.length ? (
           <div className="rounded-2xl border p-5 text-sm text-gray-500">
@@ -200,11 +205,8 @@ export default async function PlayerGamesPage({
             );
 
             return (
-            <Link
-              key={game.id}
-              href={`/games/${game.id}/results`}
-              className="block rounded-2xl border p-4"
-            >
+            <article key={game.id} className="rounded-2xl border p-4">
+            <Link href={`/games/${game.id}/results`} className="block">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="font-bold">
@@ -221,7 +223,7 @@ export default async function PlayerGamesPage({
 
                 <div className="text-right">
                   <div className="text-lg font-bold">
-                    {game.team_score} - {game.opponent_score}
+                    {game.team_score ?? "—"} - {game.opponent_score ?? "—"}
                   </div>
 
                   <div className="mt-1 text-xs text-gray-500">
@@ -236,11 +238,13 @@ export default async function PlayerGamesPage({
                 </span>
 
                 <span className="text-xl font-bold">
-                    {gameImpact.toFixed(1)}
+                    {game.entry_mode === "manual" ? "Added game · Impact unavailable" : gameImpact.toFixed(1)}
                 </span>
                 </div>
 
             </Link>
+            <GameActions gameId={game.id} playerId={playerId} opponent={game.opponent} />
+            </article>
             );
             })
         )}

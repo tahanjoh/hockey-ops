@@ -28,7 +28,7 @@ export default async function EditGamePage({
   const { data: game, error } = await supabase
     .from("games")
     .select(`
-      id,
+      *,
       player_id,
       opponent,
       position,
@@ -49,6 +49,7 @@ export default async function EditGamePage({
     redirect("/");
   }
 
+  if (game.entry_mode === "manual") redirect(`/games/add?player=${game.player_id}&game=${game.id}`);
   const safeGameId = game.id;
   const playerId = game.player_id;
 

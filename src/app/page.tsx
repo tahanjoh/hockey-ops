@@ -102,6 +102,8 @@ export default async function HomePage() {
                         Start Game
                       </Link>
 
+                      <Link href={`/games/add?player=${player.id}`} className="rounded-xl border px-4 py-3 text-center font-semibold">+ Add Game</Link>
+
                       <Link
                         href={`/players/${player.id}/summary`}
                         className="rounded-xl border px-4 py-3 text-center font-semibold"

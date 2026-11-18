@@ -1,3 +1,5 @@
+import GameActions from "../../GameActions";
+import ManualResults from "../../add/ManualResults";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -28,7 +30,7 @@ export default async function GameResultsPage({
   const { data: game, error: gameError } = await supabase
     .from("games")
     .select(`
-      id,
+      *,
       opponent,
       position,
       home_away,
@@ -56,6 +58,11 @@ export default async function GameResultsPage({
 
   if (eventsError) {
     throw new Error(eventsError.message);
+  }
+
+  if (game.entry_mode === "manual") {
+    const player = Array.isArray(game.players) ? game.players[0] : game.players;
+    return <ManualResults game={game} events={events ?? []} name={`${player?.first_name ?? ''} ${player?.last_name ?? ''}`} />;
   }
 
   const { data: shifts, error: shiftsError } = await supabase
@@ -782,12 +789,7 @@ export default async function GameResultsPage({
       )}
 
       <div className="mt-8 space-y-3">
-        <Link
-          href={`/games/${gameId}/edit`}
-          className="block w-full rounded-2xl border px-4 py-4 text-center font-semibold"
-        >
-          Edit Game
-        </Link>
+        <GameActions gameId={gameId} playerId={game.player_id} opponent={game.opponent} />
 
         <Link
           href="/"

@@ -1,3 +1,4 @@
+import { redirect as redirectShowcaseCode } from 'next/navigation';
 import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
 import {createClient} from '@/lib/supabase/server';
@@ -8,10 +9,11 @@ export const dynamic='force-dynamic';
 export const revalidate=0;
 export default async function Page({params}:{params:Promise<{token:string}>}) {
  const {token}=await params;
+ if (/^(?:[0-9]{6}|[0-9a-f]{12})$/i.test(token)) redirectShowcaseCode(`/s/${token.toUpperCase()}`);
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) notFound();
  const db=await createClient();
  const {data,error}=await db.rpc('hockey_showcase_read',{p_token:token});
  if(error) throw new Error('Unable to load this showcase. Please try again later.');
  if(!data) notFound();
- return <Viewer data={data as Showcase}/>;
+ return <Viewer data={data as Showcase} basePath={`/showcase/${token}`}/>;
 }
